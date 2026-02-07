@@ -1,0 +1,872 @@
+const express = require('express'); // Restart Triggered [Auth Update]
+const cors = require('cors');
+const db = require('./db');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+
+// --- Performance Cache ---
+let productCache = null;
+let lastCacheUpdate = 0;
+const CACHE_DURATION = 60 * 1000; // 1 minute cache
+
+const clearProductCache = () => {
+    productCache = null;
+    lastCacheUpdate = 0;
+    console.log('🧹 Product cache cleared');
+};
+
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'x-rtb-fingerprint-id', 'X-RTB-Fingerprint-Id'],
+    exposedHeaders: ['x-rtb-fingerprint-id', 'X-RTB-Fingerprint-Id'],
+    credentials: true
+}));
+
+// Comprehensive security and dev headers
+app.use((req, res, next) => {
+    // Log every request to help debug 400 errors
+    if (req.path !== '/api/health') {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+        if (req.method === 'POST' || req.method === 'PUT') {
+            console.log('Body:', JSON.stringify(req.body, null, 2));
+        }
+    }
+
+    // Explicitly allow private network access for local tunnels (Chrome/Edge)
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    res.setHeader('Permissions-Policy', 'accelerometer=*, gyroscope=*, magnetometer=*, payment=*');
+    res.setHeader('Access-Control-Expose-Headers', 'x-rtb-fingerprint-id, X-RTB-Fingerprint-Id');
+    next();
+});
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Test Route
+app.get('/api/health', async (req, res) => {
+    try {
+        const result = await db.query('SELECT NOW()');
+        res.json({ status: 'ok', time: result.rows[0].now });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+});
+
+// Setup DB Route (Temporary for migration)
+app.get('/api/init-db', async (req, res) => {
+    try {
+        const schemaSql = `
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+        CREATE TABLE IF NOT EXISTS products (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            original_id VARCHAR(255) UNIQUE,
+            name VARCHAR(255) NOT NULL,
+            price INTEGER NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            image TEXT NOT NULL,
+            slug VARCHAR(255) UNIQUE NOT NULL,
+            category_slug VARCHAR(100),
+            short_description TEXT,
+            description TEXT,
+            key_features TEXT[],
+            features TEXT[],
+            images TEXT[],
+            is_best_seller BOOLEAN DEFAULT FALSE,
+            is_custom_request BOOLEAN DEFAULT FALSE,
+            custom_form_config JSONB,
+            default_form_fields JSONB,
+            variants JSONB,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Ensure column exists if table already existed (Migration)
+        DO $$ 
+        BEGIN 
+            BEGIN
+                ALTER TABLE products ADD COLUMN is_best_seller BOOLEAN DEFAULT FALSE;
+            EXCEPTION
+                WHEN duplicate_column THEN NULL;
+            END;
+            BEGIN
+                ALTER TABLE products ADD COLUMN is_custom_request BOOLEAN DEFAULT FALSE;
+            EXCEPTION
+                WHEN duplicate_column THEN NULL;
+            END;
+            BEGIN
+                ALTER TABLE products ADD COLUMN custom_form_config JSONB;
+            EXCEPTION
+                WHEN duplicate_column THEN NULL;
+            END;
+            BEGIN
+                ALTER TABLE products ADD COLUMN default_form_fields JSONB;
+            EXCEPTION
+                WHEN duplicate_column THEN NULL;
+            END;
+            BEGIN
+                ALTER TABLE products ADD COLUMN variants JSONB;
+            EXCEPTION
+                WHEN duplicate_column THEN NULL;
+            END;
+        END $$;
+
+        CREATE TABLE IF NOT EXISTS reviews (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+            user_name VARCHAR(255) NOT NULL,
+            email VARCHAR(255),
+            rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+            comment TEXT,
+            date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS orders (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            customer_name VARCHAR(255) NOT NULL,
+            customer_email VARCHAR(255) NOT NULL,
+            customer_phone VARCHAR(20),
+            address TEXT,
+            city VARCHAR(100),
+            pincode VARCHAR(20),
+            total DECIMAL(10, 2) NOT NULL,
+            status VARCHAR(50) DEFAULT 'Pending',
+            items JSONB NOT NULL,
+            payment_id VARCHAR(255),
+            order_id VARCHAR(255),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
+        CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+        CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews(product_id);
+        CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
+        CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+
+        CREATE TABLE IF NOT EXISTS wishlist (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            user_email VARCHAR(255) NOT NULL,
+            product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_email, product_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_wishlist_user_email ON wishlist(user_email);
+        `;
+
+        await db.query(schemaSql);
+        res.json({ message: 'Database initialized successfully', status: 'ok' });
+    } catch (err) {
+        console.error('Migration failed:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Products Routes
+app.get('/api/products', async (req, res) => {
+    try {
+        const now = Date.now();
+        // Return cached data if it's still fresh
+        if (productCache && (now - lastCacheUpdate < CACHE_DURATION)) {
+            console.log('⚡ Serving products from cache');
+            return res.json(productCache);
+        }
+
+        console.log('🔍 Fetching products from database...');
+        const query = `
+            SELECT p.*, 
+            COALESCE(
+                json_agg(
+                    json_build_object(
+                        'id', r.id,
+                        'productId', r.product_id,
+                        'userName', r.user_name,
+                        'email', r.email,
+                        'rating', r.rating,
+                        'comment', r.comment,
+                        'date', r.date
+                    ) 
+                ) FILTER (WHERE r.id IS NOT NULL), 
+                '[]'
+            ) as reviews
+            FROM products p
+            LEFT JOIN reviews r ON p.id = r.product_id
+            GROUP BY p.id
+        `;
+        const result = await db.query(query);
+
+        // Update Cache
+        productCache = result.rows;
+        lastCacheUpdate = now;
+
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/products/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const result = await db.query('SELECT * FROM products WHERE slug = $1', [slug]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        const product = result.rows[0];
+        // Fetch reviews with camelCase keys
+        const reviewsQuery = `
+            SELECT id, product_id as "productId", user_name as "userName", email, rating, comment, date
+            FROM reviews 
+            WHERE product_id = $1
+        `;
+        const reviewsResult = await db.query(reviewsQuery, [product.id]);
+        product.reviews = reviewsResult.rows;
+
+        res.json(product);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create Product
+app.post('/api/products', async (req, res) => {
+    console.log('📝 Received Create Product Request');
+    console.log('Body:', req.body);
+    try {
+        const {
+            name, price, category, image, slug, categorySlug,
+            shortDescription, description, keyFeatures, features, images, isBestSeller,
+            isCustomRequest, customFormConfig, defaultFormFields, variants
+        } = req.body;
+
+        const query = `
+            INSERT INTO products (
+                name, price, category, image, slug,
+                category_slug, short_description, description,
+                key_features, features, images, is_best_seller,
+                is_custom_request, custom_form_config, default_form_fields, variants
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            RETURNING *
+        `;
+
+        const values = [
+            name, price, category, image, slug,
+            categorySlug, shortDescription, description,
+            keyFeatures, features, images, isBestSeller || false,
+            isCustomRequest || false,
+            customFormConfig ? JSON.stringify(customFormConfig) : null,
+            defaultFormFields ? JSON.stringify(defaultFormFields) : null,
+            variants ? JSON.stringify(variants) : null
+        ];
+
+        const result = await db.query(query, values);
+        console.log('✅ Product Inserted:', result.rows[0]);
+        clearProductCache(); // Cache invalidation
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('❌ Error creating product:', err);
+        const fs = require('fs');
+        fs.appendFileSync('error.log', `[${new Date().toISOString()}] Error creating product: ${err.message}\n${err.stack}\n`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update Product
+app.put('/api/products/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            name, price, category, image, slug, categorySlug,
+            shortDescription, description, keyFeatures, features, images, isBestSeller,
+            isCustomRequest, customFormConfig, defaultFormFields, variants
+        } = req.body;
+
+        const query = `
+            UPDATE products SET
+                name = $1, price = $2, category = $3, image = $4, slug = $5, 
+                category_slug = $6, short_description = $7, description = $8, 
+                key_features = $9, features = $10, images = $11, is_best_seller = $12,
+                is_custom_request = $13, custom_form_config = $14, default_form_fields = $15,
+                variants = $16
+            WHERE id = $17
+            RETURNING *
+        `;
+
+        const values = [
+            name, price, category, image, slug,
+            categorySlug, shortDescription, description,
+            keyFeatures, features, images, isBestSeller || false,
+            isCustomRequest || false,
+            customFormConfig ? JSON.stringify(customFormConfig) : null,
+            defaultFormFields ? JSON.stringify(defaultFormFields) : null,
+            variants ? JSON.stringify(variants) : null,
+            id
+        ];
+
+        const result = await db.query(query, values);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        clearProductCache(); // Cache invalidation
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete Product
+app.delete('/api/products/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        clearProductCache(); // Cache invalidation
+        res.json({ message: 'Product deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create Review
+app.post('/api/reviews', async (req, res) => {
+    try {
+        const { productId, userName, email, rating, comment, date } = req.body;
+
+        const query = `
+            INSERT INTO reviews (product_id, user_name, email, rating, comment, date)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+        `;
+
+        const values = [productId, userName, email, rating, comment, date];
+        const result = await db.query(query, values);
+
+        const returnedReview = result.rows[0];
+        // Map back to camelCase for frontend
+        const reviewResponse = {
+            id: returnedReview.id,
+            productId: returnedReview.product_id,
+            userName: returnedReview.user_name,
+            email: returnedReview.email,
+            rating: returnedReview.rating,
+            comment: returnedReview.comment,
+            date: returnedReview.date
+        };
+
+        res.status(201).json(reviewResponse);
+        clearProductCache(); // Reviews are part of product data
+    } catch (err) {
+        console.error('Error adding review:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Orders Routes
+app.get('/api/orders', async (req, res) => {
+    try {
+        const { email } = req.query;
+        let query = 'SELECT * FROM orders';
+        let params = [];
+
+        if (email) {
+            query += ' WHERE customer_email = $1';
+            params.push(email);
+        }
+
+        query += ' ORDER BY created_at DESC';
+        const result = await db.query(query, params);
+        // Map to camelCase for frontend
+        const orders = result.rows.map(row => ({
+            id: row.id,
+            customerName: row.customer_name,
+            customerEmail: row.customer_email,
+            customerPhone: row.customer_phone,
+            address: row.address,
+            city: row.city,
+            pincode: row.pincode,
+            total: parseFloat(row.total),
+            status: row.status,
+            items: row.items,
+            paymentId: row.payment_id,
+            orderId: row.order_id,
+            date: row.created_at
+        }));
+        res.json(orders);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/orders', async (req, res) => {
+    try {
+        const {
+            customerName, customerEmail, customerPhone, address, city,
+            pincode, total, items, paymentId, orderId
+        } = req.body;
+
+        const query = `
+            INSERT INTO orders (
+                customer_name, customer_email, customer_phone, address, city,
+                pincode, total, items, payment_id, order_id
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *
+        `;
+
+        const values = [
+            customerName, customerEmail, customerPhone, address, city,
+            pincode, total, JSON.stringify(items), paymentId, orderId
+        ];
+
+        const result = await db.query(query, values);
+        const row = result.rows[0];
+
+        res.status(201).json({
+            id: row.id,
+            customerName: row.customer_name,
+            customerEmail: row.customer_email,
+            customerPhone: row.customer_phone,
+            address: row.address,
+            city: row.city,
+            pincode: row.pincode,
+            total: parseFloat(row.total),
+            status: row.status,
+            items: row.items,
+            paymentId: row.payment_id,
+            orderId: row.order_id,
+            date: row.created_at
+        });
+
+        // --- EMAIL NOTIFICATION LOGIC ---
+        try {
+            // Configure Transporter
+            const transporter = nodemailer.createTransport({
+                host: process.env.EMAIL_HOST,
+                port: process.env.EMAIL_PORT,
+                secure: process.env.EMAIL_SECURE === 'true',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
+
+            const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+
+            const orderData = {
+                orderId: row.order_id,
+                customerName: row.customer_name,
+                customerEmail: row.customer_email,
+                customerPhone: row.customer_phone,
+                address: row.address,
+                city: row.city,
+                pincode: row.pincode,
+                total: parseFloat(row.total),
+                items: JSON.parse(JSON.stringify(items)), // Ensure it's the array
+                paymentId: row.payment_id
+            };
+
+            const adminMailOptions = {
+                from: process.env.EMAIL_USER,
+                to: adminEmail,
+                subject: `New Order Received #${orderId} - ${customerName}`,
+                html: getOrderAdminTemplate(orderData)
+            };
+
+            const userMailOptions = {
+                from: process.env.EMAIL_USER,
+                to: customerEmail,
+                subject: `Order Confirmation - #${orderId}`,
+                html: getOrderUserTemplate(orderData)
+            };
+
+            // Send Confirmation Emails
+            await Promise.all([
+                transporter.sendMail(adminMailOptions),
+                transporter.sendMail(userMailOptions)
+            ]);
+            console.log(`✅ Order confirmation emails sent for Order #${orderId}`);
+        } catch (emailErr) {
+            console.error('❌ Failed to send order confirmation emails:', emailErr);
+            // Don't block the response, just log the error
+        }
+    } catch (err) {
+        console.error('Error creating order:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const result = await db.query(
+            'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *',
+            [status, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const row = result.rows[0];
+        res.json({
+            id: row.id,
+            customerName: row.customer_name,
+            customerEmail: row.customer_email,
+            status: row.status
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query('DELETE FROM orders WHERE id = $1 RETURNING *', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        res.json({ message: 'Order deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Wishlist Routes
+app.get('/api/wishlist', async (req, res) => {
+    try {
+        const { email } = req.query;
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        const query = `
+            SELECT p.* 
+            FROM products p
+            JOIN wishlist w ON p.id = w.product_id
+            WHERE w.user_email = $1
+            ORDER BY w.created_at DESC
+        `;
+        const result = await db.query(query, [email]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/wishlist/toggle', async (req, res) => {
+    try {
+        const { email, productId } = req.body;
+        if (!email || !productId) return res.status(400).json({ error: 'Email and Product ID are required' });
+
+        // Check if exists
+        const check = await db.query('SELECT * FROM wishlist WHERE user_email = $1 AND product_id = $2', [email, productId]);
+
+        if (check.rows.length > 0) {
+            // Remove
+            await db.query('DELETE FROM wishlist WHERE user_email = $1 AND product_id = $2', [email, productId]);
+            res.json({ status: 'removed' });
+        } else {
+            // Add
+            await db.query('INSERT INTO wishlist (user_email, product_id) VALUES ($1, $2)', [email, productId]);
+            res.json({ status: 'added' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// B2B Inquiry Email
+const {
+    getB2BAdminTemplate,
+    getB2BUserTemplate,
+    getContactAdminTemplate,
+    getContactUserTemplate,
+    getOrderAdminTemplate,
+    getOrderUserTemplate
+} = require('./utils/emailTemplates');
+
+app.post('/api/b2b-inquiry', async (req, res) => {
+    try {
+        const { name, email, phone, company, location, products, quantity, notes } = req.body;
+
+        // Configure Transporter
+        const transporter = nodemailer.createTransport({
+            host: process.env.EMAIL_HOST,
+            port: process.env.EMAIL_PORT,
+            secure: process.env.EMAIL_SECURE === 'true',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+
+        // Email to Admin
+        const adminMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: adminEmail,
+            subject: `New B2B Inquiry from ${name} - ${company || 'Individual'}`,
+            html: getB2BAdminTemplate(req.body)
+        };
+
+        // Email to User (Confirmation)
+        const userMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Thank you for contacting Kottravai B2B',
+            html: getB2BUserTemplate(req.body)
+        };
+
+        // Send Emails
+        await Promise.all([
+            transporter.sendMail(adminMailOptions),
+            transporter.sendMail(userMailOptions)
+        ]);
+
+        res.json({ status: 'success', message: 'Inquiry sent successfully' });
+
+    } catch (error) {
+        console.error('Email Error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to send email. Please try again later.' });
+    }
+});
+
+// Custom Request Inquiry Email
+app.post('/api/custom-request', async (req, res) => {
+    try {
+        const { name, email, phone, requestedText, referenceImage, customFields, productName, allFields } = req.body;
+
+        const transporter = nodemailer.createTransport({
+            host: process.env.EMAIL_HOST,
+            port: process.env.EMAIL_PORT,
+            secure: process.env.EMAIL_SECURE === 'true',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+
+        // Construct dynamic fields HTML
+        let fieldsHtml = '';
+        if (allFields && Array.isArray(allFields)) {
+            fieldsHtml = allFields.map(f => `
+                <div style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                    <strong style="color: #2D1B4E;">${f.label}:</strong>
+                    <div style="margin-top: 5px; color: #555;">${f.value || 'N/A'}</div>
+                </div>
+            `).join('');
+        }
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: adminEmail,
+            subject: `New Customization Request: ${productName}`,
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
+                    <h2 style="color: #2D1B4E; border-bottom: 2px solid #8E2A8B; padding-bottom: 10px;">Customization Inquiry</h2>
+                    <p>You received a new customization request for <strong>${productName}</strong>.</p>
+                    
+                    <div style="margin-top: 20px;">
+                        ${fieldsHtml}
+                    </div>
+
+                    ${referenceImage ? `
+                    <div style="margin-top: 20px;">
+                        <strong style="color: #2D1B4E;">Reference Image:</strong>
+                        <div style="margin-top: 10px;">
+                            <img src="${referenceImage}" alt="Reference" style="max-width: 100%; border-radius: 8px; border: 1px solid #eee;" />
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #888;">
+                        This inquiry was sent from the Kottravai Product Details page.
+                    </div>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        res.json({ status: 'success', message: 'Custom request sent successfully' });
+
+    } catch (error) {
+        console.error('Custom Request Email Error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to send request.' });
+    }
+});
+
+// Contact Form Email
+app.post('/api/contact', async (req, res) => {
+    try {
+        const { name, email, subject, message } = req.body;
+
+        const transporter = nodemailer.createTransport({
+            host: process.env.EMAIL_HOST,
+            port: process.env.EMAIL_PORT,
+            secure: process.env.EMAIL_SECURE === 'true',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+
+        const adminMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: adminEmail,
+            subject: `New Contact Submission: ${subject || 'General Inquiry'}`,
+            html: getContactAdminTemplate(req.body)
+        };
+
+        const userMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: `We Received Your Message - Kottravai`,
+            html: getContactUserTemplate(req.body)
+        };
+
+        await Promise.all([
+            transporter.sendMail(adminMailOptions),
+            transporter.sendMail(userMailOptions)
+        ]);
+
+        res.json({ status: 'success', message: 'Message sent successfully' });
+
+    } catch (error) {
+        console.error('Contact Email Error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to send message.' });
+    }
+});
+
+// Razorpay Integration
+const Razorpay = require('razorpay');
+const crypto = require('crypto');
+
+// Initialize Razorpay
+// NOTE: Using environment variables for keys is recommended
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+});
+
+app.post('/api/razorpay/order', async (req, res) => {
+    try {
+        const { amount, currency } = req.body;
+        console.log(`💳 Creating Razorpay order: Amount=${amount}, Currency=${currency || 'INR'}`);
+
+        if (!amount || isNaN(amount) || amount <= 0) {
+            return res.status(400).json({ error: "Invalid amount. Must be a positive number." });
+        }
+
+        const options = {
+            amount: Math.round(amount * 100), // Ensure integer (paise)
+            currency: currency || "INR",
+            receipt: "order_rcptid_" + Date.now()
+        };
+
+        const order = await razorpay.orders.create(options);
+        console.log(`✅ Razorpay order created: ${order.id}`);
+        res.json(order);
+    } catch (error) {
+        console.error("❌ Razorpay Order Creation Failed:", error);
+        res.status(500).json({
+            error: error.description || error.message || "Failed to initiate payment with Razorpay",
+            details: error
+        });
+    }
+});
+
+app.post('/api/razorpay/verify', async (req, res) => {
+    try {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+        console.log("Verifying payment for Order ID:", razorpay_order_id);
+
+        const sign = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSign = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(sign.toString())
+            .digest("hex");
+
+        console.log("Expected Signature:", expectedSign);
+        console.log("Received Signature:", razorpay_signature);
+
+        if (razorpay_signature === expectedSign) {
+            console.log("✅ Payment verification success!");
+            res.json({ status: "success", message: "Payment verified successfully" });
+        } else {
+            console.error("❌ Payment verification failed: Signature mismatch");
+            res.json({ status: "failure", message: "Invalid signature sent!" });
+        }
+    } catch (error) {
+        console.error("Error during verification:", error);
+        res.status(500).json({ status: "error", message: error.message });
+    }
+});
+if (process.env.NODE_ENV !== 'production') {
+    // Auto-migration to ensure schema matches code
+    const runMigrations = async () => {
+        try {
+            console.log('🔄 Running database migrations...');
+            // Add is_best_seller column if missing
+            await db.query(`
+                DO $$ 
+                BEGIN 
+                    BEGIN
+                        ALTER TABLE products ADD COLUMN is_best_seller BOOLEAN DEFAULT FALSE;
+                    EXCEPTION
+                        WHEN duplicate_column THEN NULL;
+                    END;
+                    BEGIN
+                        ALTER TABLE products ADD COLUMN is_custom_request BOOLEAN DEFAULT FALSE;
+                    EXCEPTION
+                        WHEN duplicate_column THEN NULL;
+                    END;
+                    BEGIN
+                        ALTER TABLE products ADD COLUMN custom_form_config JSONB;
+                    EXCEPTION
+                        WHEN duplicate_column THEN NULL;
+                    END;
+                    BEGIN
+                        ALTER TABLE products ADD COLUMN default_form_fields JSONB;
+                    EXCEPTION
+                        WHEN duplicate_column THEN NULL;
+                    END;
+                    BEGIN
+                        ALTER TABLE products ADD COLUMN variants JSONB;
+                    EXCEPTION
+                        WHEN duplicate_column THEN NULL;
+                    END;
+                END $$;
+            `);
+            console.log('✅ Migrations completed: Database is up to date');
+        } catch (err) {
+            console.error('❌ Migration warning:', err.message);
+        }
+    };
+
+    runMigrations();
+
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+module.exports = app;
