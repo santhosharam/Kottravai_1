@@ -29,6 +29,13 @@
         }
     },
     "include": [
-        "src"
+        "src/**/*"
     ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "server",
+        "**/*.spec.ts",
+        "**/*.test.ts"
+    ]
 }
