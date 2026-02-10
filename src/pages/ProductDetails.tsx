@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
 import { useCart } from '@/context/CartContext';
 import { useProducts } from '@/context/ProductContext';
-import { ShoppingBag, Star, Heart, Minus, Plus, Eye, X, Check, Share2 } from 'lucide-react';
+import { ShoppingBag, Star, Heart, Minus, Plus, X, Check, Share2 } from 'lucide-react';
 
 const ProductDetails = () => {
     const { slug } = useParams();
@@ -25,10 +25,6 @@ const ProductDetails = () => {
 
     const [selectedVariant, setSelectedVariant] = useState<any>(null);
 
-    const [customRequestForm, setCustomRequestForm] = useState<any>({
-        name: '', email: '', phone: '', requestedText: '', referenceImage: '', customFields: {}
-    });
-    const [requestSuccess, setRequestSuccess] = useState(false);
 
     useEffect(() => {
         if (product) {
@@ -64,22 +60,6 @@ const ProductDetails = () => {
         }
     };
 
-    const handleCustomRequestSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        // Integration with backend would happen here
-        setRequestSuccess(true);
-    };
-
-    const handleCustomImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setCustomRequestForm({ ...customRequestForm, referenceImage: reader.result as string });
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
     const handleSubmitReview = (e: React.FormEvent) => {
         e.preventDefault();
@@ -218,15 +198,7 @@ const ProductDetails = () => {
                             </div>
                         ) : (
                             <div className="mb-12">
-                                {requestSuccess ? (
-                                    <div className="bg-green-50 p-8 rounded-[2rem] border border-green-100 text-center">
-                                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600"><Check size={32} /></div>
-                                        <h3 className="text-xl font-bold text-green-900 mb-1">Request Received</h3>
-                                        <p className="text-green-700 text-sm">We will contact you within 24 hours.</p>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => navigate('/contact')} className="w-full h-16 bg-black text-white rounded-[1.25rem] font-black uppercase tracking-widest text-xs hover:bg-[#b5128f] transition-colors">Request Price List</button>
-                                )}
+                                <button onClick={() => navigate('/contact')} className="w-full h-16 bg-black text-white rounded-[1.25rem] font-black uppercase tracking-widest text-xs hover:bg-[#b5128f] transition-colors">Request Price List</button>
                             </div>
                         )}
 
