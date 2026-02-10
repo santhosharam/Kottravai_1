@@ -2,7 +2,17 @@ const express = require('express'); // Restart Triggered [Auth Update]
 const cors = require('cors');
 const db = require('./db');
 const nodemailer = require('nodemailer');
+const { verifyConnection } = require('./utils/mailer');
 require('dotenv').config();
+
+// Verify SMTP connection at startup
+verifyConnection().then(isConnected => {
+    if (isConnected) {
+        console.log('✅ Zoho SMTP ready for sending emails');
+    } else {
+        console.warn('⚠️  Zoho SMTP connection failed - emails may not send');
+    }
+});
 
 // --- Performance Cache ---
 let productCache = null;
@@ -468,18 +478,8 @@ app.post('/api/orders', async (req, res) => {
 
         // --- EMAIL NOTIFICATION LOGIC ---
         try {
-            // Configure Transporter
-            const transporter = nodemailer.createTransport({
-                host: process.env.EMAIL_HOST,
-                port: process.env.EMAIL_PORT,
-                secure: process.env.EMAIL_SECURE === 'true',
-                auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS
-                }
-            });
+            const adminEmail = 'admin@kottravai.in';
 
-            const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 
             const orderData = {
                 orderId: row.order_id,
@@ -490,28 +490,24 @@ app.post('/api/orders', async (req, res) => {
                 city: row.city,
                 pincode: row.pincode,
                 total: parseFloat(row.total),
-                items: JSON.parse(JSON.stringify(items)), // Ensure it's the array
+                items: JSON.parse(JSON.stringify(items)),
                 paymentId: row.payment_id
             };
 
-            const adminMailOptions = {
-                from: process.env.EMAIL_USER,
-                to: adminEmail,
-                subject: `New Order Received #${orderId} - ${customerName}`,
-                html: getOrderAdminTemplate(orderData)
-            };
-
-            const userMailOptions = {
-                from: process.env.EMAIL_USER,
-                to: customerEmail,
-                subject: `Order Confirmation - #${orderId}`,
-                html: getOrderUserTemplate(orderData)
-            };
-
-            // Send Confirmation Emails
+            // Send emails with proper reply-to routing
             await Promise.all([
-                transporter.sendMail(adminMailOptions),
-                transporter.sendMail(userMailOptions)
+                sendEmail({
+                    to: adminEmail,
+                    subject: `New Order Received #${orderId} - ${customerName}`,
+                    html: getOrderAdminTemplate(orderData),
+                    type: 'order'
+                }),
+                sendEmail({
+                    to: customerEmail,
+                    subject: `Order Confirmation - #${orderId}`,
+                    html: getOrderUserTemplate(orderData),
+                    type: 'order'
+                })
             ]);
             console.log(`✅ Order confirmation emails sent for Order #${orderId}`);
         } catch (emailErr) {
@@ -608,6 +604,7 @@ app.post('/api/wishlist/toggle', async (req, res) => {
 });
 
 // B2B Inquiry Email
+const { sendEmail } = require('./utils/mailer');
 const {
     getB2BAdminTemplate,
     getB2BUserTemplate,
@@ -617,49 +614,34 @@ const {
     getOrderUserTemplate
 } = require('./utils/emailTemplates');
 
+
 app.post('/api/b2b-inquiry', async (req, res) => {
     try {
         const { name, email, phone, company, location, products, quantity, notes } = req.body;
 
-        // Configure Transporter
-        const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: process.env.EMAIL_PORT,
-            secure: process.env.EMAIL_SECURE === 'true',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
+        const adminEmail = 'admin@kottravai.in';
 
-        const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 
-        // Email to Admin
-        const adminMailOptions = {
-            from: process.env.EMAIL_USER,
-            to: adminEmail,
-            subject: `New B2B Inquiry from ${name} - ${company || 'Individual'}`,
-            html: getB2BAdminTemplate(req.body)
-        };
-
-        // Email to User (Confirmation)
-        const userMailOptions = {
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: 'Thank you for contacting Kottravai B2B',
-            html: getB2BUserTemplate(req.body)
-        };
-
-        // Send Emails
+        // Send emails with B2B reply-to routing
         await Promise.all([
-            transporter.sendMail(adminMailOptions),
-            transporter.sendMail(userMailOptions)
+            sendEmail({
+                to: adminEmail,
+                subject: `New B2B Inquiry from ${name} - ${company || 'Individual'}`,
+                html: getB2BAdminTemplate(req.body),
+                type: 'b2b'
+            }),
+            sendEmail({
+                to: email,
+                subject: 'Thank you for contacting Kottravai B2B',
+                html: getB2BUserTemplate(req.body),
+                type: 'b2b'
+            })
         ]);
 
         res.json({ status: 'success', message: 'Inquiry sent successfully' });
 
     } catch (error) {
-        console.error('Email Error:', error);
+        console.error('B2B Email Error:', error);
         res.status(500).json({ status: 'error', message: 'Failed to send email. Please try again later.' });
     }
 });
@@ -669,17 +651,8 @@ app.post('/api/custom-request', async (req, res) => {
     try {
         const { name, email, phone, requestedText, referenceImage, customFields, productName, allFields } = req.body;
 
-        const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: process.env.EMAIL_PORT,
-            secure: process.env.EMAIL_SECURE === 'true',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
+        const adminEmail = 'admin@kottravai.in';
 
-        const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 
         // Construct dynamic fields HTML
         let fieldsHtml = '';
@@ -692,36 +665,37 @@ app.post('/api/custom-request', async (req, res) => {
             `).join('');
         }
 
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: adminEmail,
-            subject: `New Customization Request: ${productName}`,
-            html: `
-                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
-                    <h2 style="color: #2D1B4E; border-bottom: 2px solid #8E2A8B; padding-bottom: 10px;">Customization Inquiry</h2>
-                    <p>You received a new customization request for <strong>${productName}</strong>.</p>
-                    
-                    <div style="margin-top: 20px;">
-                        ${fieldsHtml}
-                    </div>
+        const htmlContent = `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
+                <h2 style="color: #2D1B4E; border-bottom: 2px solid #8E2A8B; padding-bottom: 10px;">Customization Inquiry</h2>
+                <p>You received a new customization request for <strong>${productName}</strong>.</p>
+                
+                <div style="margin-top: 20px;">
+                    ${fieldsHtml}
+                </div>
 
-                    ${referenceImage ? `
-                    <div style="margin-top: 20px;">
-                        <strong style="color: #2D1B4E;">Reference Image:</strong>
-                        <div style="margin-top: 10px;">
-                            <img src="${referenceImage}" alt="Reference" style="max-width: 100%; border-radius: 8px; border: 1px solid #eee;" />
-                        </div>
-                    </div>
-                    ` : ''}
-
-                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #888;">
-                        This inquiry was sent from the Kottravai Product Details page.
+                ${referenceImage ? `
+                <div style="margin-top: 20px;">
+                    <strong style="color: #2D1B4E;">Reference Image:</strong>
+                    <div style="margin-top: 10px;">
+                        <img src="${referenceImage}" alt="Reference" style="max-width: 100%; border-radius: 8px; border: 1px solid #eee;" />
                     </div>
                 </div>
-            `
-        };
+                ` : ''}
 
-        await transporter.sendMail(mailOptions);
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #888;">
+                    This inquiry was sent from the Kottravai Product Details page.
+                </div>
+            </div>
+        `;
+
+        await sendEmail({
+            to: adminEmail,
+            subject: `New Customization Request: ${productName}`,
+            html: htmlContent,
+            type: 'custom'
+        });
+
         res.json({ status: 'success', message: 'Custom request sent successfully' });
 
     } catch (error) {
@@ -735,35 +709,23 @@ app.post('/api/contact', async (req, res) => {
     try {
         const { name, email, subject, message } = req.body;
 
-        const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: process.env.EMAIL_PORT,
-            secure: process.env.EMAIL_SECURE === 'true',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
+        const adminEmail = 'admin@kottravai.in';
 
-        const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 
-        const adminMailOptions = {
-            from: process.env.EMAIL_USER,
-            to: adminEmail,
-            subject: `New Contact Submission: ${subject || 'General Inquiry'}`,
-            html: getContactAdminTemplate(req.body)
-        };
-
-        const userMailOptions = {
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: `We Received Your Message - Kottravai`,
-            html: getContactUserTemplate(req.body)
-        };
-
+        // Send emails with support reply-to routing
         await Promise.all([
-            transporter.sendMail(adminMailOptions),
-            transporter.sendMail(userMailOptions)
+            sendEmail({
+                to: adminEmail,
+                subject: `New Contact Submission: ${subject || 'General Inquiry'}`,
+                html: getContactAdminTemplate(req.body),
+                type: 'contact'
+            }),
+            sendEmail({
+                to: email,
+                subject: `We Received Your Message - Kottravai`,
+                html: getContactUserTemplate(req.body),
+                type: 'contact'
+            })
         ]);
 
         res.json({ status: 'success', message: 'Message sent successfully' });
