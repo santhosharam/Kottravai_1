@@ -1,6 +1,7 @@
 
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { journalData } from '../data/homeData';
+import { safeSetItem, safeGetItem } from '@/utils/storage';
 
 export interface NewsItem {
     id: number;
@@ -24,12 +25,12 @@ const NewsContext = createContext<NewsContextType | undefined>(undefined);
 export const NewsProvider = ({ children }: { children: ReactNode }) => {
     // Load from local storage or default to homeData
     const [newsItems, setNewsItems] = useState<NewsItem[]>(() => {
-        const saved = localStorage.getItem('kottravai_news');
+        const saved = safeGetItem('kottravai_news');
         return saved ? JSON.parse(saved) : journalData.posts;
     });
 
     useEffect(() => {
-        localStorage.setItem('kottravai_news', JSON.stringify(newsItems));
+        safeSetItem('kottravai_news', JSON.stringify(newsItems));
     }, [newsItems]);
 
     const addNewsItem = (item: Omit<NewsItem, 'id'>) => {

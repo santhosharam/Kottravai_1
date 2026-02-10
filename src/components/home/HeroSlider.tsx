@@ -68,20 +68,20 @@ const HeroSlider = () => {
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/40"></div>
 
                             {/* Content Container - Aligned Right with Top Padding/Margin to clear logo */}
-                            <div className="absolute inset-0 flex items-start justify-end">
-                                <div className="container mx-auto px-6 md:px-12 flex justify-end">
-                                    <div className={`max-w-xl text-right transform transition-all duration-700 delay-300 mt-24 md:mt-32 lg:mt-40 ${isCurrent ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-                                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-[#2D1B4E] mb-4 leading-[1.1] tracking-tight drop-shadow-sm">
+                            <div className="absolute inset-0 flex items-center md:items-start justify-center md:justify-end">
+                                <div className="container mx-auto px-6 md:px-12 flex justify-center md:justify-end">
+                                    <div className={`max-w-xl text-center md:text-right transform transition-all duration-700 delay-300 mt-16 sm:mt-24 md:mt-32 lg:mt-40 ${isCurrent ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+                                        <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-[#2D1B4E] mb-2 md:mb-4 leading-[1.2] md:leading-[1.1] tracking-tight drop-shadow-sm">
                                             {slide.title}
                                         </h1>
-                                        <p className="text-base md:text-xl text-gray-700 mb-8 font-medium leading-relaxed drop-shadow-sm">
+                                        <p className="text-sm sm:text-base md:text-xl text-gray-700 mb-6 md:mb-8 font-medium leading-relaxed drop-shadow-sm max-w-sm mx-auto md:max-w-none md:ml-auto">
                                             {slide.subtitle}
                                         </p>
 
-                                        <div className="flex flex-wrap gap-4 justify-end">
+                                        <div className="flex flex-wrap gap-4 justify-center md:justify-end">
                                             <a
                                                 href={slide.link}
-                                                className="px-8 py-3 bg-[#b5128f] text-white font-bold rounded-full hover:bg-[#920e73] transition-all transform hover:-translate-y-1 hover:shadow-xl shadow-lg flex items-center justify-center min-w-[150px]"
+                                                className="px-6 py-2.5 md:px-8 md:py-3 bg-[#b5128f] text-white font-bold rounded-full hover:bg-[#920e73] transition-all transform hover:-translate-y-1 hover:shadow-xl shadow-lg flex items-center justify-center min-w-[120px] md:min-w-[150px] text-sm md:text-base"
                                             >
                                                 {slide.cta}
                                             </a>

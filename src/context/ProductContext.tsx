@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 import { Product, categories } from '@/data/products';
+import { safeSetItem, safeGetItem } from '@/utils/storage';
 
-const API_URL = '/api/products';
+const API_URL = `${import.meta.env.VITE_API_URL || '/api'}/products`;
 interface ProductContextType {
     products: Product[];
     addProduct: (product: Product) => Promise<void>;
@@ -17,8 +18,22 @@ interface ProductContextType {
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [products, setProducts] = useState<Product[]>(() => {
+        // Try to load from local storage for instant initial paint
+        const saved = safeGetItem('kottravai_cache_products');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    });
+    const [loading, setLoading] = useState(() => {
+        // Only show loader if we have no cached data
+        return !safeGetItem('kottravai_cache_products');
+    });
 
     // Helper to map DB snake_case to Frontend camelCase
     const mapProductFromDB = (p: any): Product => ({
@@ -32,8 +47,8 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         reviews: p.reviews || [],
         isBestSeller: p.is_best_seller || p.isBestSeller || false,
         isCustomRequest: p.is_custom_request || p.isCustomRequest || false,
-        customFormConfig: p.custom_form_config || p.customFormConfig || [],
-        defaultFormFields: p.default_form_fields || p.defaultFormFields || [],
+        custom_form_config: p.custom_form_config || p.customFormConfig || [],
+        default_form_fields: p.default_form_fields || p.defaultFormFields || [],
         variants: p.variants || []
     });
 
@@ -41,11 +56,16 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         try {
             const response = await axios.get(API_URL);
             const mappedProducts = response.data.map(mapProductFromDB);
+
+            // Only update state if data has actually changed to avoid unnecessary re-renders
+            // A simple length check or deep compare could go here, but let's always sync to be safe
             setProducts(mappedProducts);
+
+            // Update local storage for next time - use safe helper to handle QuotaExceededError
+            safeSetItem('kottravai_cache_products', JSON.stringify(mappedProducts));
+            safeSetItem('kottravai_cache_time', Date.now().toString());
         } catch (error) {
             console.error("Failed to fetch products from API", error);
-            // Fallback to initial if API fails? Or just empty?
-            // setProducts(initialProducts); // Maybe don't fallback to avoid confusion
         } finally {
             setLoading(false);
         }

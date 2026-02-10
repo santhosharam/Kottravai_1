@@ -1,25 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProducts } from '@/context/ProductContext';
 import { useVideos } from '@/context/VideoContext';
 import { useNews } from '@/context/NewsContext';
 import { useReviews } from '@/context/ReviewContext';
 import { useOrders } from '../../context/OrderContext';
 import { usePartners } from '@/context/PartnerContext';
-import { Link } from 'react-router-dom';
-import { Plus, Image as ImageIcon, Trash2, X, Upload, Pencil, MessageSquareQuote, Package, ShoppingBag, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, DollarSign, Handshake, Video, Newspaper } from 'lucide-react';
-import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Image as ImageIcon, Trash2, X, Upload, Pencil, MessageSquareQuote, Package, ShoppingBag, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, DollarSign, Handshake, Video, Newspaper, Users, LogOut, Search, Bell, Activity, ArrowUpRight, ArrowDownRight, MoreVertical, Calendar, Clock, Rocket, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 import { categories } from '@/data/products';
 
 
 const AdminDashboard = () => {
+    const navigate = useNavigate();
     const { products, addProduct, deleteProduct, updateProduct, updateStock } = useProducts();
     const { videos, addVideo, deleteVideo, updateVideo } = useVideos();
     const { newsItems, addNewsItem, deleteNewsItem, updateNewsItem } = useNews();
     const { addReview, deleteReview, updateReview, getReviewsByPage } = useReviews();
-    const { adminOrders: orders, updateOrderStatus, deleteOrder } = useOrders();
+    const { adminOrders: orders, updateOrderStatus, deleteOrder, fetchAllOrders } = useOrders();
     const { partners, addPartner, updatePartner, deletePartner } = usePartners();
 
-    const [view, setView] = useState<'dashboard' | 'list' | 'add' | 'videos' | 'news' | 'reviews' | 'stocks' | 'orders' | 'partners'>('dashboard');
+    const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean | null>(null);
+    const [view, setView] = useState<'dashboard' | 'list' | 'add' | 'videos' | 'news' | 'reviews' | 'stocks' | 'orders' | 'partners' | 'users'>('dashboard');
+
+    // Admin Session Guard
+    useEffect(() => {
+        const isAdmin = sessionStorage.getItem('kottravai_admin_session') === 'true';
+        if (!isAdmin) {
+            navigate('/admin/login');
+        } else {
+            setIsAdminAuthenticated(true);
+            // Fetch all orders specifically for admin use
+            fetchAllOrders();
+        }
+    }, [navigate, fetchAllOrders]);
+
+    const handleLogout = () => {
+        sessionStorage.removeItem('kottravai_admin_session');
+        navigate('/admin/login');
+    };
+
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -39,6 +59,25 @@ const AdminDashboard = () => {
     // Partner Form State
     const [partnerForm, setPartnerForm] = useState({ name: '', logo: '' });
     const [editingPartnerId, setEditingPartnerId] = useState<number | null>(null);
+
+    // Innovative State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
+
+    const recentActivity = [
+        { id: 1, type: 'order', message: 'New order received from John Doe', time: '5 mins ago', status: 'success' },
+        { id: 2, type: 'stock', message: 'Product "Bento Box" is low on stock', time: '12 mins ago', status: 'warning' },
+        { id: 3, type: 'review', message: 'New 5-star review on "Ceramic Plate"', time: '1 hour ago', status: 'info' },
+        { id: 4, type: 'news', message: 'News article "Safety First" published', time: '3 hours ago', status: 'success' },
+    ];
+
+    const topProducts = products.slice(0, 4).map(p => ({
+        name: p.name,
+        sales: Math.floor(Math.random() * 500) + 100,
+        growth: Math.floor(Math.random() * 20) + 5,
+        image: p.image
+    }));
 
 
     const filteredReviews = getReviewsByPage(reviewPage);
@@ -63,6 +102,28 @@ const AdminDashboard = () => {
 
     const salesGrowth = lastMonthSales === 0 ? (thisMonthSales > 0 ? 12 : 0) : ((thisMonthSales - lastMonthSales) / lastMonthSales) * 100;
     const ordersGrowth = lastMonthOrders.length === 0 ? (thisMonthOrders.length > 0 ? 5 : 0) : ((thisMonthOrders.length - lastMonthOrders.length) / lastMonthOrders.length) * 100;
+
+    // Extract unique customers from orders
+    const customers = orders.reduce((acc: any[], order) => {
+        const existing = acc.find(c => c.email === order.customerEmail);
+        if (existing) {
+            existing.totalSpent += order.total;
+            existing.orderCount += 1;
+            if (new Date(order.date) > new Date(existing.lastOrder)) {
+                existing.lastOrder = order.date;
+            }
+        } else {
+            acc.push({
+                name: order.customerName,
+                email: order.customerEmail,
+                phone: order.customerPhone,
+                totalSpent: order.total,
+                orderCount: 1,
+                lastOrder: order.date
+            });
+        }
+        return acc;
+    }, []);
 
 
     // Filter products by category slug
@@ -416,237 +477,468 @@ const AdminDashboard = () => {
         setOtherImages(prev => prev.filter((_, i) => i !== index));
     };
 
+    if (isAdminAuthenticated === null) return null; // Prevent flicker
+
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             {/* Sidebar */}
-            <aside className="w-64 bg-[#2D1B4E] text-white flex-shrink-0 hidden md:block">
-                <div className="p-6 border-b border-gray-700">
-                    <div className="flex flex-col items-center gap-2">
-                        <img src="/kottravai-logo-full.png" alt="Kottravai" className="w-full max-w-[150px] h-auto object-contain" />
-                        <span className="text-[#8E2A8B] text-xs font-bold tracking-[0.2em] mt-1">ADMIN PANEL</span>
+            <aside className="w-72 bg-[#2D1B4E] text-white flex-shrink-0 hidden lg:flex flex-col border-r border-white/5 shadow-2xl overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#8E2A8B] via-purple-400 to-[#8E2A8B]"></div>
+
+                <div className="p-8 pb-10">
+                    <div className="flex flex-col items-center">
+                        <div className="relative group cursor-pointer">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-[#8E2A8B] to-purple-600 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                            <img src="/admin-logo.png" alt="Kottravai" className="relative w-48 h-auto object-contain transition-all duration-500 group-hover:scale-105 group-hover:brightness-0 group-hover:invert" />
+                        </div>
+                        <div className="mt-4 flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                            <span className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em]">System Core Active</span>
+                        </div>
                     </div>
                 </div>
-                <nav className="p-4 space-y-8">
-                    {/* Dashboard Section */}
+
+                <nav className="flex-1 px-4 space-y-10 overflow-y-auto no-scrollbar pb-10">
+                    {/* Main Section */}
                     <div className="space-y-2">
+                        <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Central Hub</p>
                         <button
                             onClick={() => { setView('dashboard'); resetForm(); setSelectedCategory('all'); }}
-                            className={`w-full text-left px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-3 ${view === 'dashboard' ? 'bg-[#8E2A8B] text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
+                            className={`w-full text-left px-5 py-3.5 rounded-2xl transition-all duration-300 font-bold flex items-center gap-4 group ${view === 'dashboard' ? 'sidebar-item-active' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
                         >
-                            <LayoutDashboard size={18} />
-                            Dashboard
+                            <div className={`p-2 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-white/20' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
+                                <LayoutDashboard size={20} />
+                            </div>
+                            <span className="text-sm">Control Tower</span>
                         </button>
                     </div>
-                    {/* Products Section */}
-                    <div className="space-y-2">
-                        <h3 className="px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Products</h3>
-                        <div className="space-y-1">
-                            <button
-                                onClick={() => { setSelectedCategory('all'); setView('list'); resetForm(); }}
-                                className={`w-full text-left px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-3 ${selectedCategory === 'all' && view === 'list' ? 'bg-[#8E2A8B] text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <ImageIcon size={18} />
-                                All Products
-                            </button>
-                            <button
-                                onClick={() => { setView('stocks'); resetForm(); setSelectedCategory('all'); }}
-                                className={`w-full text-left px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-3 ${view === 'stocks' ? 'bg-[#8E2A8B] text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <Package size={18} />
-                                Stocks
-                            </button>
-                            <button
-                                onClick={() => { setView('orders'); resetForm(); setSelectedCategory('all'); }}
-                                className={`w-full text-left px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-3 ${view === 'orders' ? 'bg-[#8E2A8B] text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <ShoppingBag size={18} />
-                                Orders
-                            </button>
+
+                    {/* Management Section */}
+                    <div className="space-y-4">
+                        <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Commerce Lab</p>
+                        <div className="space-y-2">
+                            {[
+                                { view: 'list', icon: Package, label: 'Inventory', active: selectedCategory === 'all' && view === 'list' },
+                                { view: 'stocks', icon: Activity, label: 'Stock Levels', active: view === 'stocks' },
+                                { view: 'orders', icon: ShoppingBag, label: 'Order Streams', active: view === 'orders' },
+                                { view: 'users', icon: Users, label: 'User Insights', active: view === 'users' }
+                            ].map((item, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        if (item.view === 'list') setSelectedCategory('all');
+                                        setView(item.view as any);
+                                        resetForm();
+                                    }}
+                                    className={`w-full text-left px-5 py-3 rounded-2xl transition-all duration-300 font-bold flex items-center justify-between group ${item.active ? 'sidebar-item-active' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-xl transition-colors ${item.active ? 'bg-white/20' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
+                                            <item.icon size={18} />
+                                        </div>
+                                        <span className="text-sm">{item.label}</span>
+                                    </div>
+                                    {item.active && <div className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white]"></div>}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Website Section */}
-                    <div className="space-y-2">
-                        <h3 className="px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Website</h3>
-                        <div className="space-y-1">
-                            <button
-                                onClick={() => { setView('reviews'); resetForm(); setSelectedCategory('reviews'); }}
-                                className={`w-full text-left px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-3 ${view === 'reviews' ? 'bg-[#8E2A8B] text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <MessageSquareQuote size={18} /> Manage Reviews
-                            </button>
-                            <button
-                                onClick={() => { setView('news'); resetForm(); setSelectedCategory('news'); }}
-                                className={`w-full text-left px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-3 ${view === 'news' ? 'bg-[#8E2A8B] text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <Newspaper size={18} /> Manage News
-                            </button>
-                            <button
-                                onClick={() => { setView('videos'); resetForm(); setSelectedCategory('videos'); }}
-                                className={`w-full text-left px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-3 ${view === 'videos' ? 'bg-[#8E2A8B] text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <Video size={18} /> Manage Videos
-                            </button>
-                            <button
-                                onClick={() => { setView('partners'); resetForm(); setSelectedCategory('partners'); }}
-                                className={`w-full text-left px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-3 ${view === 'partners' ? 'bg-[#8E2A8B] text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <Handshake size={18} /> Manage Trusted By
-                            </button>
+                    {/* Content Section */}
+                    <div className="space-y-4">
+                        <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Brand Experience</p>
+                        <div className="space-y-2">
+                            {[
+                                { view: 'reviews', icon: MessageSquareQuote, label: 'Feedback' },
+                                { view: 'news', icon: Newspaper, label: 'Newsroom' },
+                                { view: 'videos', icon: Video, label: 'Media Hub' },
+                                { view: 'partners', icon: Handshake, label: 'Alliances' }
+                            ].map((item, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => { setView(item.view as any); resetForm(); }}
+                                    className={`w-full text-left px-5 py-3 rounded-2xl transition-all duration-300 font-bold flex items-center justify-between group ${view === item.view ? 'sidebar-item-active' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-xl transition-colors ${view === item.view ? 'bg-white/20' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
+                                            <item.icon size={18} />
+                                        </div>
+                                        <span className="text-sm">{item.label}</span>
+                                    </div>
+                                    {view === item.view && <div className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white]"></div>}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </nav>
+
+                <div className="p-6 mt-auto">
+                    <div className="bg-gradient-to-br from-[#8E2A8B]/20 to-[#2D1B4E] rounded-2xl p-5 border border-[#8E2A8B]/30 shadow-inner">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-10 w-10 rounded-full bg-[#8E2A8B] flex items-center justify-center font-black text-white shadow-lg">AD</div>
+                            <div>
+                                <p className="text-xs font-black text-white">Super Admin</p>
+                                <p className="text-[10px] text-gray-400">Master Level Access</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-900/50 text-rose-400 text-xs font-black hover:bg-rose-500 hover:text-white transition-all duration-300"
+                        >
+                            <LogOut size={14} />
+                            CORE DISCONNECT
+                        </button>
+                    </div>
+                </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto">
-                <header className="bg-white shadow-sm px-8 py-4 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-gray-800">
-                        {view === 'dashboard' ? 'Overview' : view === 'videos' ? 'Manage Videos' : view === 'news' ? 'Manage News' : view === 'reviews' ? 'Manage Reviews' : view === 'stocks' ? 'Inventory Management' : view === 'orders' ? 'Order Management' : view === 'partners' ? 'Manage Trusted Partners' : view === 'add' ? (editingId ? 'Edit Product' : 'Add New Product') : (selectedCategory === 'all' ? 'All Products' : categories.find(c => c.slug === selectedCategory)?.name || selectedCategory)}
-                    </h2>
-                    <div className="flex gap-4">
-                        <Link to="/" className="text-[#8E2A8B] hover:underline font-medium">Visit Site</Link>
+            <main className="flex-1 overflow-y-auto bg-gray-50/50">
+                <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-10 py-5 flex justify-between items-center shadow-sm">
+                    <div className="flex items-center gap-8 flex-1">
+                        <h2 className="text-2xl font-black text-[#2D1B4E] whitespace-nowrap admin-gradient-text">
+                            {view === 'dashboard' ? 'Overview' : view === 'videos' ? 'Video Lab' : view === 'news' ? 'Press Hub' : view === 'reviews' ? 'Feedback Lab' : view === 'stocks' ? 'Inventory' : view === 'orders' ? 'Order Stream' : view === 'users' ? 'Monitoring' : view === 'partners' ? 'Alliances' : view === 'add' ? (editingId ? 'Refine Product' : 'Construct Product') : (selectedCategory === 'all' ? 'Inventory Catalog' : categories.find(c => c.slug === selectedCategory)?.name || selectedCategory)}
+                        </h2>
+
+                        {/* Search Bar */}
+                        <div className="hidden md:flex items-center flex-1 max-w-md relative group">
+                            <Search className="absolute left-4 text-gray-400 group-focus-within:text-[#8E2A8B] transition-colors" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search everything..."
+                                className="w-full bg-gray-50 border-none rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:ring-2 focus:ring-[#8E2A8B]/10 transition-all outline-none"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-5">
+                        <div className="flex items-center gap-2 border-r border-gray-100 pr-5">
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="relative p-2.5 rounded-xl bg-gray-50 text-gray-500 hover:bg-[#8E2A8B]/5 hover:text-[#8E2A8B] transition-all group"
+                            >
+                                <Bell size={20} />
+                                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-rose-500 border-2 border-white"></span>
+
+                                {showNotifications && (
+                                    <div className="absolute top-full right-0 mt-4 w-80 glass-card rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-50">
+                                            <h4 className="font-black text-[#2D1B4E] text-xs uppercase tracking-widest">Alerts Flow</h4>
+                                            <span className="text-[10px] text-[#8E2A8B] font-bold">4 New</span>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {recentActivity.slice(0, 3).map(n => (
+                                                <div key={n.id} className="flex gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                                    <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${n.status === 'success' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                                    <p className="text-[11px] font-bold text-gray-600 line-clamp-2">{n.message}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </button>
+                            <Link to="/" className="p-2.5 rounded-xl bg-gray-50 text-gray-500 hover:bg-[#8E2A8B]/5 hover:text-[#8E2A8B] transition-all">
+                                <ImageIcon size={20} />
+                            </Link>
+                        </div>
+
                         {view === 'list' && (
                             <button
                                 onClick={() => { resetForm(); setView('add'); }}
-                                className="bg-[#8E2A8B] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-[#722270] transition-colors shadow-lg"
+                                className="bg-[#8E2A8B] text-white px-6 py-3 rounded-2xl flex items-center gap-3 hover:bg-[#722270] transition-all hover:shadow-xl hover:shadow-[#8E2A8B]/30 font-black text-sm uppercase tracking-wider"
                             >
-                                <Plus size={18} /> Add Product
+                                <Plus size={18} />
+                                Deploy Item
                             </button>
                         )}
+
+                        <div className="flex items-center gap-3 pl-2">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-sm font-black text-[#2D1B4E]">Admin User</p>
+                                <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Active Access</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#8E2A8B] to-purple-800 p-[1px]">
+                                <div className="h-full w-full rounded-[15px] bg-white p-1">
+                                    <div className="h-full w-full rounded-xl bg-gray-100 flex items-center justify-center text-[#8E2A8B] font-black text-xs uppercase shadow-inner">
+                                        K
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </header>
 
                 <div className="p-8">
                     {view === 'dashboard' ? (
-                        <div className="max-w-6xl mx-auto space-y-8">
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Sales</p>
-                                            <h3 className="text-2xl font-bold text-gray-900 mt-2">₹{totalSales.toLocaleString()}</h3>
-                                        </div>
-                                        <div className="p-2 bg-green-100 rounded-lg text-green-600">
-                                            <DollarSign size={24} />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm">
-                                        <TrendingUp size={16} className={`${salesGrowth >= 0 ? 'text-green-500' : 'text-red-500'} mr-1`} />
-                                        <span className={`${salesGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-bold`}>{salesGrowth >= 0 ? '+' : ''}{salesGrowth.toFixed(1)}%</span>
-                                        <span className="text-gray-400 ml-1">from last month</span>
-                                    </div>
+                        <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+                            {/* Dashboard Header */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-3xl font-extrabold text-[#2D1B4E]">Intelligence Dashboard</h1>
+                                    <p className="text-gray-500 mt-1">Welcome back, Admin. Here's what's happening today.</p>
                                 </div>
-
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Orders</p>
-                                            <h3 className="text-2xl font-bold text-gray-900 mt-2">{totalOrders}</h3>
-                                        </div>
-                                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                                            <ShoppingBag size={24} />
-                                        </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                                        <button
+                                            onClick={() => setActiveTab('overview')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-[#8E2A8B] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        >
+                                            Overview
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('analytics')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-[#8E2A8B] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        >
+                                            Analytics
+                                        </button>
                                     </div>
-                                    <div className="mt-4 flex items-center text-sm">
-                                        <TrendingUp size={16} className={`${ordersGrowth >= 0 ? 'text-green-500' : 'text-red-500'} mr-1`} />
-                                        <span className={`${ordersGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-bold`}>{ordersGrowth >= 0 ? '+' : ''}{ordersGrowth.toFixed(1)}%</span>
-                                        <span className="text-gray-400 ml-1">from last month</span>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Products</p>
-                                            <h3 className="text-2xl font-bold text-gray-900 mt-2">{products.length}</h3>
-                                        </div>
-                                        <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
-                                            <Package size={24} />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-gray-400">Inventory Status</span>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Active Reviews</p>
-                                            <h3 className="text-2xl font-bold text-gray-900 mt-2">{filteredReviews.length}</h3>
-                                        </div>
-                                        <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
-                                            <MessageSquareQuote size={24} />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-gray-400">Across all pages</span>
-                                    </div>
+                                    <button className="bg-white p-2.5 rounded-xl shadow-sm border border-gray-100 text-gray-400 hover:text-[#8E2A8B] transition-colors">
+                                        <Calendar size={20} />
+                                    </button>
                                 </div>
                             </div>
 
-                            {/* Charts Section */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-6">Sales Growth</h3>
-                                    <div className="h-80 w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart
-                                                data={[
-                                                    { name: 'Jan', sales: 4000 },
-                                                    { name: 'Feb', sales: 3000 },
-                                                    { name: 'Mar', sales: 2000 },
-                                                    { name: 'Apr', sales: 2780 },
-                                                    { name: 'May', sales: 1890 },
-                                                    { name: 'Jun', sales: 2390 },
-                                                    { name: 'Jul', sales: 3490 },
-                                                ]}
-                                                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                                            >
-                                                <defs>
-                                                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#8E2A8B" stopOpacity={0.8} />
-                                                        <stop offset="95%" stopColor="#8E2A8B" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <XAxis dataKey="name" />
-                                                <YAxis />
-                                                <CartesianGrid strokeDasharray="3 3" />
-                                                <Tooltip />
-                                                <Area type="monotone" dataKey="sales" stroke="#8E2A8B" fillOpacity={1} fill="url(#colorSales)" />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
+                            {activeTab === 'overview' ? (
+                                <>
+                                    {/* Stats Grid - Innovative Look */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        {[
+                                            { label: 'Total Revenue', value: `₹${totalSales.toLocaleString()}`, grow: salesGrowth, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                                            { label: 'Total Orders', value: totalOrders, grow: ordersGrowth, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                            { label: 'Conversion Rate', value: '3.2%', grow: 1.2, icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+                                            { label: 'Avg Order Value', value: `₹${totalOrders > 0 ? (totalSales / totalOrders).toFixed(0) : 0}`, grow: -2.4, icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-50' }
+                                        ].map((stat, i) => (
+                                            <div key={i} className="glass-card stat-card-glow p-6 rounded-2xl group hover:transform hover:-translate-y-1 transition-all duration-300">
+                                                <div className="flex justify-between items-start">
+                                                    <div className={`p-3 ${stat.bg} ${stat.color} rounded-xl transition-transform group-hover:scale-110 duration-300`}>
+                                                        <stat.icon size={24} />
+                                                    </div>
+                                                    <div className={`flex items-center gap-1 text-sm font-bold ${stat.grow >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                        {stat.grow >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                                                        {Math.abs(stat.grow).toFixed(1)}%
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4">
+                                                    <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">{stat.label}</p>
+                                                    <h3 className="text-3xl font-black text-[#2D1B4E] mt-1">{stat.value}</h3>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
 
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-6">Visitor Insights</h3>
-                                    <div className="h-80 w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart
-                                                data={[
-                                                    { name: 'Mon', visitors: 240 },
-                                                    { name: 'Tue', visitors: 139 },
-                                                    { name: 'Wed', visitors: 980 },
-                                                    { name: 'Thu', visitors: 390 },
-                                                    { name: 'Fri', visitors: 480 },
-                                                    { name: 'Sat', visitors: 380 },
-                                                    { name: 'Sun', visitors: 430 },
-                                                ]}
-                                            >
-                                                <CartesianGrid strokeDasharray="3 3" />
-                                                <XAxis dataKey="name" />
-                                                <YAxis />
-                                                <Tooltip />
-                                                <Legend />
-                                                <Bar dataKey="visitors" fill="#2D1B4E" radius={[4, 4, 0, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
+                                    {/* Main Dashboard Section: Charts & Activity */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        {/* Sales Chart - Large */}
+                                        <div className="lg:col-span-2 glass-card p-8 rounded-2xl">
+                                            <div className="flex justify-between items-center mb-8">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-[#2D1B4E]">Revenue Overview</h3>
+                                                    <p className="text-sm text-gray-500 mt-1">Monthly performance insights</p>
+                                                </div>
+                                                <select className="bg-gray-50 border border-gray-100 text-sm font-bold rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#8E2A8B]/20">
+                                                    <option>Last 7 Months</option>
+                                                    <option>Last Year</option>
+                                                </select>
+                                            </div>
+                                            <div className="h-[350px] w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart
+                                                        data={[
+                                                            { name: 'Jan', sales: 4000, orders: 120 },
+                                                            { name: 'Feb', sales: 3000, orders: 90 },
+                                                            { name: 'Mar', sales: 5000, orders: 150 },
+                                                            { name: 'Apr', sales: 2780, orders: 100 },
+                                                            { name: 'May', sales: 1890, orders: 80 },
+                                                            { name: 'Jun', sales: 2390, orders: 110 },
+                                                            { name: 'Jul', sales: 3490, orders: 130 },
+                                                        ]}
+                                                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                                                    >
+                                                        <defs>
+                                                            <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor="#8E2A8B" stopOpacity={0.1} />
+                                                                <stop offset="95%" stopColor="#8E2A8B" stopOpacity={0} />
+                                                            </linearGradient>
+                                                            <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor="#2D1B4E" stopOpacity={0.1} />
+                                                                <stop offset="95%" stopColor="#2D1B4E" stopOpacity={0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dy={10} />
+                                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} />
+                                                        <Tooltip
+                                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', padding: '12px' }}
+                                                            cursor={{ stroke: '#8E2A8B', strokeWidth: 2, strokeDasharray: '5 5' }}
+                                                        />
+                                                        <Area type="monotone" dataKey="sales" stroke="#8E2A8B" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" />
+                                                        <Area type="monotone" dataKey="orders" stroke="#2D1B4E" strokeWidth={4} fillOpacity={1} fill="url(#colorOrders)" />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+
+                                        {/* Recent Activity Sidebar */}
+                                        <div className="glass-card p-8 rounded-2xl flex flex-col">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h3 className="text-xl font-bold text-[#2D1B4E]">Live Activity</h3>
+                                                <button className="text-[#8E2A8B] p-2 hover:bg-[#8E2A8B]/10 rounded-lg transition-colors">
+                                                    <MoreVertical size={20} />
+                                                </button>
+                                            </div>
+                                            <div className="space-y-6 flex-1">
+                                                {recentActivity.map((activity) => (
+                                                    <div key={activity.id} className="flex gap-4 group">
+                                                        <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${activity.status === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : activity.status === 'warning' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'}`} />
+                                                        <div>
+                                                            <p className="text-sm font-bold text-gray-800 leading-tight group-hover:text-[#8E2A8B] transition-colors cursor-default">{activity.message}</p>
+                                                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                                <Clock size={12} />
+                                                                {activity.time}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <button className="mt-8 w-full py-3 rounded-xl border-2 border-dashed border-gray-100 text-gray-400 font-bold hover:border-[#8E2A8B] hover:text-[#8E2A8B] transition-all">
+                                                View All Logs
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Grid: Top Products & Quick Actions */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                        {/* Top Products */}
+                                        <div className="glass-card p-8 rounded-2xl">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h3 className="text-xl font-bold text-[#2D1B4E]">Top Performing Products</h3>
+                                                <button className="text-sm font-bold text-[#8E2A8B] hover:underline">See Details</button>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {topProducts.map((product, i) => (
+                                                    <div key={i} className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="h-12 w-12 rounded-lg overflow-hidden bg-gray-100">
+                                                                <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-gray-800">{product.name}</p>
+                                                                <p className="text-xs text-gray-400">{product.sales} sales this week</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="font-black text-[#2D1B4E]">₹{(product.sales * 1200).toLocaleString()}</p>
+                                                            <p className="text-xs text-emerald-500 font-bold flex items-center justify-end gap-1">
+                                                                <TrendingUp size={12} />
+                                                                +{product.growth}%
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Quick Actions / Bento Items */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {[
+                                                { title: 'New Product', icon: Plus, desc: 'Add item to store', action: () => setView('add'), color: 'bg-purple-600' },
+                                                { title: 'Check Stocks', icon: Package, desc: '9 items low', action: () => setView('stocks'), color: 'bg-orange-500' },
+                                                { title: 'Manage Orders', icon: ShoppingBag, desc: '4 pending today', action: () => setView('orders'), color: 'bg-blue-600' },
+                                                { title: 'View Reviews', icon: MessageSquareQuote, desc: 'Manage feedback', action: () => setView('reviews'), color: 'bg-pink-600' }
+                                            ].map((action, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={action.action}
+                                                    className="glass-card p-6 rounded-2xl flex flex-col items-center justify-center text-center group hover:shadow-2xl hover:shadow-[#8E2A8B]/10 transition-all duration-300 border-b-4 hover:border-b-[#8E2A8B]"
+                                                >
+                                                    <div className={`p-4 ${action.color} text-white rounded-2xl mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
+                                                        <action.icon size={28} />
+                                                    </div>
+                                                    <h4 className="font-black text-[#2D1B4E] uppercase text-xs tracking-widest">{action.title}</h4>
+                                                    <p className="text-sm text-gray-500 mt-1">{action.desc}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        <div className="lg:col-span-2 glass-card p-8 rounded-3xl">
+                                            <h3 className="text-xl font-black text-[#2D1B4E] mb-6">Regional Sales Trends</h3>
+                                            <div className="h-[300px]">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={[
+                                                        { name: 'North', sales: 4000 },
+                                                        { name: 'South', sales: 7000 },
+                                                        { name: 'East', sales: 2000 },
+                                                        { name: 'West', sales: 5000 },
+                                                        { name: 'Central', sales: 3000 },
+                                                    ]}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                                                        <YAxis axisLine={false} tickLine={false} />
+                                                        <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                                        <Bar dataKey="sales" fill="#8E2A8B" radius={[8, 8, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                        <div className="glass-card p-8 rounded-3xl flex flex-col items-center">
+                                            <h3 className="text-xl font-black text-[#2D1B4E] mb-6 self-start">Category Share</h3>
+                                            <div className="h-[300px] w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={[
+                                                                { name: 'Safety', value: 40 },
+                                                                { name: 'Industrial', value: 30 },
+                                                                { name: 'Custom', value: 20 },
+                                                                { name: 'Other', value: 10 },
+                                                            ]}
+                                                            innerRadius={60}
+                                                            outerRadius={80}
+                                                            paddingAngle={5}
+                                                            dataKey="value"
+                                                        >
+                                                            {[
+                                                                { color: '#8E2A8B' },
+                                                                { color: '#2D1B4E' },
+                                                                { color: '#722270' },
+                                                                { color: '#94A3B8' }
+                                                            ].map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip />
+                                                        <Legend verticalAlign="bottom" height={36} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {[
+                                            { label: 'Avg Session', value: '4m 32s', icon: Clock, color: 'text-blue-500' },
+                                            { label: 'Bounce Rate', value: '24.8%', icon: Activity, color: 'text-rose-500' },
+                                            { label: 'New Users', value: '1,284', icon: Users, color: 'text-emerald-500' }
+                                        ].map((item, i) => (
+                                            <div key={i} className="glass-card p-6 rounded-2xl flex items-center gap-4">
+                                                <div className={`p-3 rounded-xl bg-gray-50 ${item.color}`}>
+                                                    <item.icon size={24} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{item.label}</p>
+                                                    <p className="text-xl font-black text-[#2D1B4E]">{item.value}</p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     ) : view === 'videos' ? (
                         <div className="space-y-8 max-w-5xl mx-auto">
@@ -1589,6 +1881,68 @@ const AdminDashboard = () => {
                                                 </td>
                                             </tr>
                                         ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : view === 'users' ? (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Customers</h4>
+                                    <p className="text-3xl font-bold text-[#2D1B4E]">{customers.length}</p>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Average LTV</h4>
+                                    <p className="text-3xl font-bold text-blue-600">
+                                        ₹{customers.length > 0 ? (customers.reduce((acc, c) => acc + c.totalSpent, 0) / customers.length).toFixed(2) : 0}
+                                    </p>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Repeat Customers</h4>
+                                    <p className="text-3xl font-bold text-purple-600">{customers.filter(c => c.orderCount > 1).length}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-[#2D1B4E] text-white">
+                                        <tr>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Customer Name</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Email/Phone</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Orders</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Total Spent</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Last Order</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {customers.sort((a, b) => b.totalSpent - a.totalSpent).map((customer, idx) => (
+                                            <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <span className="font-bold text-gray-800">{customer.name}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm text-gray-600">{customer.email}</span>
+                                                        <span className="text-xs text-gray-400">{customer.phone}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="bg-purple-50 text-[#8E2A8B] px-3 py-1 rounded-full text-xs font-bold">
+                                                        {customer.orderCount} Orders
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 font-bold text-gray-900">₹{customer.totalSpent.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-500">
+                                                    {new Date(customer.lastOrder).toLocaleDateString()}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {customers.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-10 text-center text-gray-400 italic">No customer data available yet.</td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

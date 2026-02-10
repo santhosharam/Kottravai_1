@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { CheckCircle, Lock, Truck, Store, ChevronDown } from 'lucide-react';
@@ -6,15 +6,18 @@ import MainLayout from '@/layouts/MainLayout';
 import { useCart } from '@/context/CartContext';
 import { useOrders } from '@/context/OrderContext';
 
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+
+import { useAuth } from '@/context/AuthContext';
 
 const Checkout = () => {
+    const { isAuthenticated, openLoginModal, user } = useAuth();
     const { cart, cartTotal, clearCart } = useCart();
     const { addOrder } = useOrders();
 
     const [formData, setFormData] = useState({
-        fullName: '',
-        email: '',
+        fullName: user?.name || '',
+        email: user?.email || '',
         phone: '',
         address: '',
         city: '',
@@ -23,6 +26,17 @@ const Checkout = () => {
         country: 'India',
         paymentMethod: 'online'
     });
+
+    // Auto-prefill if user logs in while on page
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                fullName: prev.fullName || user.name || '',
+                email: prev.email || user.email || ''
+            }));
+        }
+    }, [user]);
 
     const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -173,6 +187,33 @@ const Checkout = () => {
             setIsSubmitting(false);
         }
     };
+
+    if (!isAuthenticated) {
+        return (
+            <MainLayout>
+                <div className="min-h-[70vh] flex flex-col items-center justify-center p-4 bg-gray-50 font-sans">
+                    <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 max-w-md w-full text-center">
+                        <div className="w-16 h-16 bg-[#b5128f]/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <Lock size={32} className="text-[#b5128f]" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-[#2D1B4E] mb-3">Login to Checkout</h2>
+                        <p className="text-gray-500 mb-8 leading-relaxed">
+                            To ensure your order is saved to your account and for a secure shopping experience, please sign in.
+                        </p>
+                        <button
+                            onClick={openLoginModal}
+                            className="w-full bg-[#b5128f] text-white font-black uppercase tracking-[0.2em] py-4 rounded-xl hover:bg-[#910e73] transition-all transform active:scale-95 shadow-xl shadow-[#b5128f]/20 flex items-center justify-center gap-2"
+                        >
+                            Sign In / Register
+                        </button>
+                        <Link to="/cart" className="inline-block mt-6 text-sm font-bold text-gray-400 hover:text-[#b5128f] transition-colors">
+                            Return to Cart
+                        </Link>
+                    </div>
+                </div>
+            </MainLayout>
+        );
+    }
 
     if (cart.length === 0 && !orderPlaced) {
         return (

@@ -51,43 +51,45 @@ const BestSellers = () => {
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="flex justify-center space-x-8 mb-12 text-sm md:text-base font-medium text-gray-500 overflow-x-auto">
-                    <button
-                        onClick={() => setActiveTab('All Products')}
-                        className={getTabClass('All Products')}
-                    >
-                        All Products
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('Coco Crafts')}
-                        className={getTabClass('Coco Crafts')}
-                    >
-                        Coco Crafts
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('Terracotta')}
-                        className={getTabClass('Terracotta')}
-                    >
-                        Terracotta
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('Essential Care')}
-                        className={getTabClass('Essential Care')}
-                    >
-                        Essential Care
-                    </button>
+                <div className="flex justify-center mb-8 px-4 overflow-x-auto no-scrollbar">
+                    <div className="flex space-x-4 md:space-x-8 text-sm md:text-base font-medium text-gray-500 min-w-max pb-2">
+                        <button
+                            onClick={() => setActiveTab('All Products')}
+                            className={getTabClass('All Products')}
+                        >
+                            All Products
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('Coco Crafts')}
+                            className={getTabClass('Coco Crafts')}
+                        >
+                            Coco Crafts
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('Terracotta')}
+                            className={getTabClass('Terracotta')}
+                        >
+                            Terracotta
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('Essential Care')}
+                            className={getTabClass('Essential Care')}
+                        >
+                            Essential Care
+                        </button>
+                    </div>
                 </div>
 
                 {/* Product Grid */}
                 {displayProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                         {displayProducts.map((product) => {
                             const isInCart = cart.some(item => item.id === product.id);
                             return (
                                 <div key={product.id} className="group relative bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300">
 
                                     {/* Product Image */}
-                                    <div className="relative h-64 overflow-hidden bg-gray-100">
+                                    <div className="relative h-48 sm:h-64 overflow-hidden bg-gray-100">
                                         <img
                                             src={product.image}
                                             alt={product.name}
@@ -95,66 +97,70 @@ const BestSellers = () => {
                                         />
 
                                         {/* Overlay Action Buttons */}
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-4">
-                                            {product.isCustomRequest ? (
-                                                <Link to={`/product/${product.slug}`} className="p-3 bg-white text-[#8E2A8B] rounded-full hover:bg-[#8E2A8B] hover:text-white transition-colors shadow-lg transform translate-y-4 group-hover:translate-y-0 duration-300">
-                                                    <Eye size={20} />
-                                                </Link>
-                                            ) : (
-                                                <>
-                                                    {product.variants && product.variants.length > 0 ? (
-                                                        <Link to={`/product/${product.slug}`} className="p-3 bg-white text-gray-900 rounded-full hover:bg-[#8E2A8B] hover:text-white transition-colors shadow-lg transform translate-y-4 group-hover:translate-y-0 duration-300">
-                                                            <div className="flex flex-col items-center">
-                                                                <Eye size={20} />
-                                                            </div>
-                                                        </Link>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => isInCart ? removeFromCart(product.id) : addToCart(product)}
-                                                            className={`p-3 rounded-full shadow-lg transform translate-y-4 group-hover:translate-y-0 duration-300 transition-colors ${isInCart
-                                                                ? 'bg-[#8E2A8B] text-white hover:bg-[#701a6d]'
-                                                                : 'bg-white text-gray-900 hover:bg-[#8E2A8B] hover:text-white'
-                                                                }`}
-                                                            title={isInCart ? "Remove from Cart" : "Add to Cart"}
-                                                        >
-                                                            {isInCart ? <Check size={20} /> : <ShoppingCart size={20} />}
-                                                        </button>
-                                                    )}
-                                                    {!(product.variants && product.variants.length > 0) && (
-                                                        <Link to={`/product/${product.slug}`} className="p-3 bg-white text-gray-900 rounded-full hover:bg-[#8E2A8B] hover:text-white transition-colors shadow-lg transform translate-y-4 group-hover:translate-y-0 duration-300 delay-75">
-                                                            <Eye size={20} />
-                                                        </Link>
-                                                    )}
-                                                </>
-                                            )}
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 md:space-x-4">
+                                            {/* Mobile Visibility Fix: Always show buttons on mobile */}
+                                            <div className="flex md:contents space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300">
+                                                {product.isCustomRequest ? (
+                                                    <Link to={`/product/${product.slug}`} className="p-2 md:p-3 bg-white text-[#8E2A8B] rounded-full hover:bg-[#8E2A8B] hover:text-white transition-colors shadow-lg">
+                                                        <Eye size={18} className="md:w-5 md:h-5" />
+                                                    </Link>
+                                                ) : (
+                                                    <>
+                                                        {product.variants && product.variants.length > 0 ? (
+                                                            <Link to={`/product/${product.slug}`} className="p-2 md:p-3 bg-white text-gray-900 rounded-full hover:bg-[#8E2A8B] hover:text-white transition-colors shadow-lg">
+                                                                <Eye size={18} className="md:w-5 md:h-5" />
+                                                            </Link>
+                                                        ) : (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    isInCart ? removeFromCart(product.id) : addToCart(product);
+                                                                }}
+                                                                className={`p-2 md:p-3 rounded-full shadow-lg transition-colors ${isInCart
+                                                                    ? 'bg-[#8E2A8B] text-white hover:bg-[#701a6d]'
+                                                                    : 'bg-white text-gray-900 hover:bg-[#8E2A8B] hover:text-white'
+                                                                    }`}
+                                                                title={isInCart ? "Remove from Cart" : "Add to Cart"}
+                                                            >
+                                                                {isInCart ? <Check size={18} className="md:w-5 md:h-5" /> : <ShoppingCart size={18} className="md:w-5 md:h-5" />}
+                                                            </button>
+                                                        )}
+                                                        {!(product.variants && product.variants.length > 0) && (
+                                                            <Link to={`/product/${product.slug}`} className="p-2 md:p-3 bg-white text-gray-900 rounded-full hover:bg-[#8E2A8B] hover:text-white transition-colors shadow-lg">
+                                                                <Eye size={18} className="md:w-5 md:h-5" />
+                                                            </Link>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Badge */}
-                                        <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                                        <span className="absolute top-2 left-2 md:top-3 md:left-3 bg-red-500 text-white text-[10px] md:text-xs font-bold px-1.5 py-0.5 md:px-2 md:py-1 rounded">
                                             SALE
                                         </span>
                                     </div>
 
                                     {/* Product Info */}
-                                    <div className="p-5 text-center">
-                                        <span className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">
+                                    <div className="p-3 md:p-5 text-center">
+                                        <span className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wider mb-1 block">
                                             {product.category}
                                         </span>
-                                        <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors cursor-pointer">
+                                        <h3 className="text-sm md:text-lg font-bold text-gray-900 mb-1 md:mb-2 group-hover:text-primary transition-colors cursor-pointer truncate">
                                             <Link to={`/product/${product.slug}`}>{product.name}</Link>
                                         </h3>
-                                        <p className="text-primary font-bold text-lg">
+                                        <div className="text-secondary font-bold text-sm md:text-lg">
                                             {product.isCustomRequest ? (
-                                                <span className="text-sm italic bg-purple-50 px-2 py-1 rounded">Price on Request</span>
+                                                <span className="text-[10px] md:text-sm italic bg-purple-50 px-2 py-0.5 md:py-1 rounded">Price on Request</span>
                                             ) : product.variants && product.variants.length > 0 ? (
                                                 <span className="flex flex-col items-center">
-                                                    <span className="text-[10px] uppercase tracking-tighter opacity-70">Starting From</span>
+                                                    <span className="text-[8px] md:text-[10px] uppercase tracking-tighter opacity-70">Starting From</span>
                                                     <span>₹{Math.min(...product.variants.map(v => v.price)).toLocaleString('en-IN')}</span>
                                                 </span>
                                             ) : (
                                                 <>₹{parseFloat(product.price.toString()).toLocaleString('en-IN')}</>
                                             )}
-                                        </p>
+                                        </div>
                                     </div>
                                 </div>
                             );

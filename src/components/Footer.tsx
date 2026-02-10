@@ -24,7 +24,7 @@ const Footer = () => {
 
     return (
         <footer className="bg-black text-white pt-20 pb-10 relative">
-            <div className="mx-auto max-w-[1440px] px-8 md:px-12 lg:px-20 grid md:grid-cols-4 gap-12 mb-16">
+            <div className="mx-auto max-w-[1440px] px-6 sm:px-8 md:px-12 lg:px-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
                 {/* Col 1: Brand & Address */}
                 <div className="space-y-6">
                     <Link to="/" className="inline-block">
@@ -67,7 +67,6 @@ const Footer = () => {
                         <li><Link to="/terms-of-service" className="hover:text-[#d846ef] transition-colors">Terms Of Service</Link></li>
                         <li><Link to="/privacy-policy" className="hover:text-[#d846ef] transition-colors">Privacy Policy</Link></li>
                         <li><Link to="/sitemap" className="hover:text-[#d846ef] transition-colors">Sitemap</Link></li>
-                        <li><Link to="/admin" className="hover:text-[#d846ef] transition-colors">Admin Access</Link></li>
                     </ul>
                 </div>
 

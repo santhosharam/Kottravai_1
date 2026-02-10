@@ -311,27 +311,30 @@ const Shop = () => {
                         </div>
                     </div>
 
-                    {/* Mobile Filter Toggle */}
-                    <div className="lg:hidden mb-6 flex justify-between items-center bg-gray-50 p-4 rounded-lg">
-                        <button
-                            onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
-                            className="flex items-center gap-2 font-bold text-[#2D1B4E]"
-                        >
-                            <Filter size={20} /> Filters
-                        </button>
-                        <select
-                            className="bg-transparent text-sm font-medium focus:outline-none"
-                            onChange={(e) => setSortBy(e.target.value)}
-                        >
-                            <option value="default">Default Sorting</option>
-                            <option value="price-low">Price: Low to High</option>
-                            <option value="price-high">Price: High to Low</option>
-                        </select>
+                    {/* Mobile Horizontal Scrollable Categories */}
+                    <div className="lg:hidden mb-6 -mx-4 px-4 overflow-x-auto no-scrollbar pb-2">
+                        <div className="flex gap-3 min-w-max">
+                            <Link
+                                to="/shop"
+                                className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!slug ? 'bg-[#b5128f] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}
+                            >
+                                All Items
+                            </Link>
+                            {categories.filter(c => !c.parent).map((parent) => (
+                                <Link
+                                    key={parent.slug}
+                                    to={`/category/${parent.slug}`}
+                                    className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${slug === parent.slug ? 'bg-[#8E2A8B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}
+                                >
+                                    {parent.name}
+                                </Link>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Mobile Filter Drawer (Conditional) */}
                     {isMobileFiltersOpen && (
-                        <div className="lg:hidden fixed inset-0 z-[100] bg-white overflow-y-auto p-6 animate-in slide-in-from-bottom duration-500">
+                        <div className="lg:hidden fixed inset-0 z-[200] bg-white overflow-y-auto p-6 animate-in slide-in-from-bottom duration-500">
                             <div className="flex justify-between items-center mb-8">
                                 <h3 className="font-serif text-2xl font-bold text-[#2D1B4E]">Filters</h3>
                                 <button
@@ -444,19 +447,27 @@ const Shop = () => {
                                             </>
                                         )}
                                     </div>
-                                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
-                                        <h1 className="text-xl font-serif font-black text-[#2D1B4E] px-2">{pageTitle}</h1>
+                                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-3 md:p-4 rounded-2xl border border-gray-100 shadow-sm sticky top-0 md:relative z-40">
+                                        <h1 className="text-lg md:text-xl font-serif font-black text-[#2D1B4E] px-2">{pageTitle}</h1>
 
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
+                                            {/* Mobile Filter Toggle Button */}
+                                            <button
+                                                onClick={() => setIsMobileFiltersOpen(true)}
+                                                className="lg:hidden flex flex-1 items-center justify-center gap-2 py-3 px-5 rounded-xl bg-gray-50 text-[10px] font-black uppercase tracking-widest border border-transparent active:bg-gray-100"
+                                            >
+                                                <Filter size={14} className="text-[#b5128f]" /> Filters
+                                            </button>
+
                                             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-full border border-green-100">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
                                                 <span className="text-[10px] font-bold text-green-700 uppercase tracking-tighter">
-                                                    {sortedProducts.length} Items Found
+                                                    {sortedProducts.length} Items
                                                 </span>
                                             </div>
 
                                             {/* Innovative Custom Dropdown */}
-                                            <div className="relative min-w-[200px]">
+                                            <div className="relative flex-1 sm:flex-initial lg:min-w-[200px]">
                                                 <button
                                                     onClick={() => setIsSortOpen(!isSortOpen)}
                                                     className={`w-full flex items-center justify-between py-3 px-5 rounded-xl transition-all border ${isSortOpen ? 'bg-white border-[#b5128f] shadow-lg' : 'bg-gray-50 border-transparent hover:bg-gray-100 hover:border-[#b5128f]/20'
@@ -523,13 +534,13 @@ const Shop = () => {
 
 
                                                     {/* Innovation: Glassmorphism Quick Actions */}
-                                                    <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+                                                    <div className="absolute top-3 right-3 flex flex-col gap-2 z-20 md:opacity-0 md:translate-x-12 md:group-hover:translate-x-0 md:group-hover:opacity-100 transition-all duration-300">
                                                         <Link
                                                             to={`/product/${product.slug}`}
-                                                            className="w-10 h-10 bg-white/40 backdrop-blur-xl border border-white/40 rounded-full flex items-center justify-center text-[#2D1B4E] hover:bg-[#b5128f] hover:text-white hover:border-[#b5128f] shadow-lg transition-all duration-300 translate-x-12 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
+                                                            className="w-9 h-9 md:w-10 md:h-10 bg-white/60 md:bg-white/40 backdrop-blur-xl border border-white/40 rounded-full flex items-center justify-center text-[#2D1B4E] hover:bg-[#b5128f] hover:text-white hover:border-[#b5128f] shadow-lg transition-all duration-300"
                                                             title="View Details"
                                                         >
-                                                            <Eye size={18} />
+                                                            <Eye size={16} />
                                                         </Link>
                                                         <button
                                                             onClick={(e) => {
@@ -537,13 +548,13 @@ const Shop = () => {
                                                                 e.stopPropagation();
                                                                 toggleWishlist(product);
                                                             }}
-                                                            className={`w-10 h-10 backdrop-blur-xl border rounded-full flex items-center justify-center shadow-lg transition-all duration-300 translate-x-12 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 delay-75 ${isInWishlist(product.id)
+                                                            className={`w-9 h-9 md:w-10 md:h-10 backdrop-blur-xl border rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${isInWishlist(product.id)
                                                                 ? 'bg-[#EC4899] text-white border-[#EC4899]'
-                                                                : 'bg-white/40 text-[#2D1B4E] border-white/40 hover:bg-[#EC4899] hover:text-white hover:border-[#EC4899]'
+                                                                : 'bg-white/60 md:bg-white/40 text-[#2D1B4E] border-white/40 hover:bg-[#EC4899] hover:text-white hover:border-[#EC4899]'
                                                                 }`}
                                                             title={isInWishlist(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}
                                                         >
-                                                            <Heart size={18} fill={isInWishlist(product.id) ? "currentColor" : "none"} />
+                                                            <Heart size={16} fill={isInWishlist(product.id) ? "currentColor" : "none"} />
                                                         </button>
                                                     </div>
 

@@ -3,7 +3,7 @@ import { CartItem } from './CartContext';
 import { useAuth } from './AuthContext';
 import axios from 'axios';
 
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export interface Order {
     id: string;
@@ -62,19 +62,18 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (isAuthenticated && user?.email) {
             setLoading(true);
-            Promise.all([fetchOrders(), fetchAllOrders()]).finally(() => setLoading(false));
 
-            // Polling for live updates
+            // Only fetch what's needed for the current user
+            fetchOrders().finally(() => setLoading(false));
+
+            // Polling for live updates only if authenticated
             const interval = setInterval(() => {
                 fetchOrders();
-                fetchAllOrders();
-            }, 30000);
+            }, 60000); // Increased interval to 1 minute
             return () => clearInterval(interval);
         } else {
             setOrders([]);
-            // Still fetch all orders for admin even if not logged in via user auth
-            // (Assumes Admin Panel might be accessed via direct route)
-            fetchAllOrders();
+            setAdminOrders([]);
         }
     }, [isAuthenticated, user?.email]);
 

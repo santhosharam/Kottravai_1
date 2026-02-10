@@ -3,13 +3,14 @@ import { X, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const LoginModal: React.FC = () => {
-    const { isLoginModalOpen, closeLoginModal, login, signUp } = useAuth();
-    const [isLogin, setIsLogin] = useState(true);
+    const { isLoginModalOpen, closeLoginModal, login, signUp, resetPassword } = useAuth();
+    const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
     const [showPassword, setShowPassword] = useState(false);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!isLoginModalOpen) return null;
@@ -22,7 +23,6 @@ const LoginModal: React.FC = () => {
         if (/[0-9]/.test(pass)) score++;
         if (/[^A-Za-z0-9]/.test(pass)) score++;
 
-        // Cap score at 4
         const finalScore = Math.min(4, Math.max(1, score - (pass.length < 8 ? 1 : 0)));
 
         switch (finalScore) {
@@ -37,8 +37,9 @@ const LoginModal: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setSuccessMessage(null);
 
-        if (!isLogin) {
+        if (mode === 'signup') {
             const hasNumber = /[0-9]/.test(password);
             const hasSpecial = /[^A-Za-z0-9]/.test(password);
 
@@ -58,22 +59,25 @@ const LoginModal: React.FC = () => {
 
         setIsSubmitting(true);
         try {
-            if (isLogin) {
+            if (mode === 'login') {
                 const { error: loginError } = await login(email, password);
-                if (loginError) {
-                    setError(loginError.message);
-                } else {
-                    closeLoginModal();
-                }
-            } else {
+                if (loginError) setError(loginError.message);
+                else closeLoginModal();
+            } else if (mode === 'signup') {
                 const { error: signUpError } = await signUp(email, password, name);
                 if (signUpError) {
                     setError(signUpError.message);
                 } else {
-                    // Supabase by default requires email confirmation
-                    setError("Success! Please check your email for the confirmation link.");
-                    // Optional: auto-login or switch to login state
-                    // setIsLogin(true);
+                    setSuccessMessage("Account created successfully! You can now sign in.");
+                    setMode('login');
+                }
+            } else if (mode === 'forgot') {
+                const { error: resetError } = await resetPassword(email);
+                if (resetError) {
+                    setError(resetError.message);
+                } else {
+                    setSuccessMessage("Password reset email sent! Please check your inbox.");
+                    setMode('login');
                 }
             }
         } catch (err: any) {
@@ -85,6 +89,7 @@ const LoginModal: React.FC = () => {
 
     const handleInputClick = () => {
         if (error) setError(null);
+        if (successMessage) setSuccessMessage(null);
     };
 
     return (
@@ -104,7 +109,7 @@ const LoginModal: React.FC = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8">
                         <h2 className="text-3xl font-serif font-bold text-white uppercase tracking-wider">
-                            {isLogin ? 'Sign In' : 'Sign Up'}
+                            {mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Sign Up' : 'Recovery'}
                         </h2>
                     </div>
 
@@ -121,12 +126,12 @@ const LoginModal: React.FC = () => {
                 <div className="p-8 sm:p-10">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-4">
-                            {!isLogin && (
+                            {mode === 'signup' && (
                                 <div className="relative animate-in slide-in-from-top-2 duration-300">
                                     <input
                                         type="text"
                                         placeholder="Full Name"
-                                        required={!isLogin}
+                                        required
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         onFocus={handleInputClick}
@@ -147,26 +152,28 @@ const LoginModal: React.FC = () => {
                                 />
                             </div>
 
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="Password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    onFocus={handleInputClick}
-                                    className="w-full px-6 py-4 bg-[#F0F5FF] border-none rounded-2xl text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-[#b5128f]/20 outline-none transition-all"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                            </div>
+                            {mode !== 'forgot' && (
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="Password"
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        onFocus={handleInputClick}
+                                        className="w-full px-6 py-4 bg-[#F0F5FF] border-none rounded-2xl text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-[#b5128f]/20 outline-none transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            )}
 
-                            {/* Error Message */}
+                            {/* Messages */}
                             {error && (
                                 <div className="p-3 bg-red-50 border border-red-100 rounded-xl animate-in slide-in-from-top-1 fade-in duration-300">
                                     <p className="text-xs font-bold text-red-500 text-center uppercase tracking-tight">
@@ -175,8 +182,16 @@ const LoginModal: React.FC = () => {
                                 </div>
                             )}
 
+                            {successMessage && (
+                                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl animate-in slide-in-from-top-1 fade-in duration-300">
+                                    <p className="text-xs font-bold text-emerald-600 text-center uppercase tracking-tight">
+                                        {successMessage}
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Password Strength Indicator (Sign Up only) */}
-                            {!isLogin && password.length > 0 && (
+                            {mode === 'signup' && password.length > 0 && (
                                 <div className="px-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
                                     <div className="flex gap-1 h-1.5">
                                         {[1, 2, 3, 4].map((step) => {
@@ -199,9 +214,13 @@ const LoginModal: React.FC = () => {
                             )}
                         </div>
 
-                        {isLogin && (
+                        {mode === 'login' && (
                             <div className="flex justify-start">
-                                <button type="button" className="text-sm font-medium text-gray-400 hover:text-[#b5128f] transition-colors underline underline-offset-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setMode('forgot')}
+                                    className="text-sm font-medium text-gray-400 hover:text-[#b5128f] transition-colors underline underline-offset-4"
+                                >
                                     Forgot password?
                                 </button>
                             </div>
@@ -212,21 +231,22 @@ const LoginModal: React.FC = () => {
                             disabled={isSubmitting}
                             className={`w-full py-4 bg-black text-white font-black uppercase tracking-[0.2em] rounded-full hover:bg-[#b5128f] transition-all transform active:scale-95 shadow-xl shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
-                            {isSubmitting ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
+                            {isSubmitting ? 'Processing...' : mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Sign Up' : 'Send Reset Link'}
                         </button>
 
                         <div className="text-center">
                             <p className="text-sm font-medium text-gray-500">
-                                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                                {mode === 'login' ? "Don't have an account? " : mode === 'signup' ? "Already have an account? " : "Remembered your password? "}
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        setIsLogin(!isLogin);
+                                        setMode(mode === 'login' ? 'signup' : 'login');
                                         setError(null);
+                                        setSuccessMessage(null);
                                     }}
                                     className="text-[#b5128f] font-bold hover:underline"
                                 >
-                                    {isLogin ? 'Sign up' : 'Sign in'}
+                                    {mode === 'login' ? 'Sign up' : 'Sign in'}
                                 </button>
                             </p>
                         </div>

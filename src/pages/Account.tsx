@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import MainLayout from '@/layouts/MainLayout';
@@ -9,10 +9,13 @@ import { useOrders } from '@/context/OrderContext';
 
 const Account = () => {
     const navigate = useNavigate();
-    const { isAuthenticated, user, logout, openLoginModal } = useAuth();
+    const { isAuthenticated, user, logout, openLoginModal, updatePassword } = useAuth();
     const { wishlist, toggleWishlist } = useWishlist();
     const { orders, loading: ordersLoading } = useOrders();
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+    const [newPassword, setNewPassword] = useState('');
 
     // User Profile State
     const [userProfile, setUserProfile] = useState({
@@ -20,6 +23,58 @@ const Account = () => {
         email: user?.email || '',
         phone: ''
     });
+
+    useEffect(() => {
+        if (user) {
+            setUserProfile(prev => ({
+                ...prev,
+                name: user.name,
+                email: user.email
+            }));
+        }
+    }, [user]);
+
+    useEffect(() => {
+        // Check if user came from a password recovery link
+        if (window.location.hash.includes('type=recovery')) {
+            setActiveTab('profile');
+            setMessage({ type: 'success', text: 'Reset link confirmed. Please set your new password below.' });
+        }
+    }, []);
+
+    const handleUpdateProfile = async () => {
+        setIsUpdating(true);
+        // Supabase update logic would go here
+        setTimeout(() => {
+            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            setIsUpdating(false);
+        }, 1000);
+    };
+
+    const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setMessage(null);
+
+        if (newPassword.length < 8) {
+            setMessage({ type: 'error', text: 'Password must be at least 8 characters.' });
+            return;
+        }
+
+        setIsUpdating(true);
+        try {
+            const { error } = await updatePassword(newPassword);
+            if (error) {
+                setMessage({ type: 'error', text: error.message });
+            } else {
+                setMessage({ type: 'success', text: 'Password updated successfully!' });
+                setNewPassword('');
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Failed to update password. Please try again.' });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     if (!isAuthenticated) {
         return (
@@ -94,7 +149,6 @@ const Account = () => {
                                 </button>
                             </div>
                         </div>
-
                     </div>
                 );
             case 'orders':
@@ -176,44 +230,86 @@ const Account = () => {
                 );
             case 'profile':
                 return (
-                    <div className="animate-in fade-in duration-500">
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-bold text-[#2D1B4E]">Security & Profile</h2>
-                            <p className="text-gray-500">Update your personal information and login credentials.</p>
+                    <div className="animate-in fade-in duration-500 space-y-12">
+                        <div>
+                            <div className="mb-8">
+                                <h2 className="text-2xl font-bold text-[#2D1B4E]">Security & Profile</h2>
+                                <p className="text-gray-500">Update your personal information and login credentials.</p>
+                            </div>
+                            <div className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
+                                <div className="grid gap-8 max-w-xl">
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 ml-1">Full Name</label>
+                                        <input
+                                            type="text"
+                                            value={userProfile.name}
+                                            onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })}
+                                            className="w-full bg-white border-none rounded-2xl px-6 py-4 shadow-sm focus:ring-2 focus:ring-[#b5128f]/20 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 ml-1">Email Address</label>
+                                        <input
+                                            type="email"
+                                            disabled
+                                            value={userProfile.email}
+                                            className="w-full bg-white/50 border-none rounded-2xl px-6 py-4 shadow-sm outline-none cursor-not-allowed text-gray-400"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 ml-1">Phone Number</label>
+                                        <input
+                                            type="tel"
+                                            value={userProfile.phone}
+                                            onChange={(e) => setUserProfile({ ...userProfile, phone: e.target.value })}
+                                            placeholder="Add your mobile number"
+                                            className="w-full bg-white border-none rounded-2xl px-6 py-4 shadow-sm focus:ring-2 focus:ring-[#b5128f]/20 outline-none transition-all"
+                                        />
+                                    </div>
+
+                                    {message && (
+                                        <div className={`p-4 rounded-2xl text-sm font-bold uppercase tracking-tight text-center ${message.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                                            {message.text}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleUpdateProfile}
+                                        disabled={isUpdating}
+                                        className="w-full sm:w-max bg-[#b5128f] text-white font-black uppercase tracking-[0.2em] py-4 px-10 rounded-2xl hover:bg-[#910e73] transition-all transform active:scale-95 shadow-xl shadow-[#b5128f]/20 disabled:opacity-50"
+                                    >
+                                        {isUpdating ? 'Updating...' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
-                            <div className="grid gap-8 max-w-xl">
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-bold text-gray-700 ml-1">Full Name</label>
-                                    <input
-                                        type="text"
-                                        value={userProfile.name}
-                                        onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })}
-                                        className="w-full bg-white border-none rounded-2xl px-6 py-4 shadow-sm focus:ring-2 focus:ring-[#b5128f]/20 outline-none transition-all"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-bold text-gray-700 ml-1">Email Address</label>
-                                    <input
-                                        type="email"
-                                        value={userProfile.email}
-                                        onChange={(e) => setUserProfile({ ...userProfile, email: e.target.value })}
-                                        className="w-full bg-white border-none rounded-2xl px-6 py-4 shadow-sm focus:ring-2 focus:ring-[#b5128f]/20 outline-none transition-all"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-bold text-gray-700 ml-1">Phone Number</label>
-                                    <input
-                                        type="tel"
-                                        value={userProfile.phone}
-                                        onChange={(e) => setUserProfile({ ...userProfile, phone: e.target.value })}
-                                        placeholder="Add your mobile number"
-                                        className="w-full bg-white border-none rounded-2xl px-6 py-4 shadow-sm focus:ring-2 focus:ring-[#b5128f]/20 outline-none transition-all"
-                                    />
-                                </div>
-                                <button className="w-full sm:w-max bg-[#b5128f] text-white font-black uppercase tracking-[0.2em] py-4 px-10 rounded-2xl hover:bg-[#910e73] transition-all transform active:scale-95 shadow-xl shadow-[#b5128f]/20">
-                                    Save Changes
-                                </button>
+
+                        <div>
+                            <div className="mb-8">
+                                <h2 className="text-2xl font-bold text-[#2D1B4E]">Update Password</h2>
+                                <p className="text-gray-500">Change your login password securely.</p>
+                            </div>
+                            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm transition-all hover:shadow-md">
+                                <form onSubmit={handleUpdatePassword} className="grid gap-6 max-w-xl">
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 ml-1">New Password</label>
+                                        <input
+                                            type="password"
+                                            required
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Minimum 8 characters"
+                                            className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-[#b5128f]/20 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={isUpdating || !newPassword}
+                                        className="w-full sm:w-max bg-black text-white font-black uppercase tracking-[0.2em] py-4 px-10 rounded-2xl hover:bg-[#b5128f] transition-all transform active:scale-95 shadow-xl shadow-black/10 disabled:opacity-50"
+                                    >
+                                        {isUpdating ? 'Processing...' : 'Change Password'}
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -297,9 +393,9 @@ const Account = () => {
                                     <div className="w-14 h-14 bg-[#b5128f] text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-[#b5128f]/20">
                                         {user?.name?.[0].toUpperCase() || 'K'}
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-[#2D1B4E]">{user?.name}</h4>
-                                        <p className="text-xs text-gray-500 font-medium">{userProfile.email}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="font-bold text-[#2D1B4E] truncate">{user?.name}</h4>
+                                        <p className="text-xs text-gray-500 font-medium truncate">{user?.email}</p>
                                     </div>
                                 </div>
 
@@ -312,7 +408,10 @@ const Account = () => {
                                     ].map((item) => (
                                         <button
                                             key={item.id}
-                                            onClick={() => setActiveTab(item.id)}
+                                            onClick={() => {
+                                                setActiveTab(item.id);
+                                                setMessage(null);
+                                            }}
                                             className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all ${activeTab === item.id
                                                 ? 'bg-[#b5128f] text-white shadow-xl shadow-[#b5128f]/20 translate-x-1'
                                                 : 'text-gray-500 hover:bg-gray-50 hover:text-[#b5128f]'

@@ -18,6 +18,8 @@ interface AuthContextType {
     closeLoginModal: () => void;
     login: (email: string, password: string) => Promise<{ error: any }>;
     signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+    resetPassword: (email: string) => Promise<{ error: any }>;
+    updatePassword: (password: string) => Promise<{ error: any }>;
     logout: () => Promise<void>;
 }
 
@@ -83,6 +85,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { error };
     };
 
+    const resetPassword = async (email: string) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/account`,
+        });
+        return { error };
+    };
+
+    const updatePassword = async (password: string) => {
+        const { error } = await supabase.auth.updateUser({ password });
+        return { error };
+    };
+
     const logout = async () => {
         await supabase.auth.signOut();
         setUser(null);
@@ -98,6 +112,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             closeLoginModal,
             login,
             signUp,
+            resetPassword,
+            updatePassword,
             logout
         }}>
             {children}

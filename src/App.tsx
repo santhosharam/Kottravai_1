@@ -14,6 +14,7 @@ import Checkout from '@/pages/Checkout';
 import ProductDetails from '@/pages/ProductDetails';
 import Account from '@/pages/Account';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminLogin from '@/pages/admin/AdminLogin';
 
 import ScrollToTop from '@/components/ScrollToTop';
 
@@ -46,6 +47,7 @@ function App() {
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
                 {/* Admin Panel */}
+                <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminDashboard />} />
 
             </Routes>

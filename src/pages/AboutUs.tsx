@@ -4,15 +4,28 @@ import { useState, useEffect } from 'react';
 
 const TeamSlider = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const visibleCards = 4;
+    const [visibleCards, setVisibleCards] = useState(4);
     const totalCards = teamMembers.length;
 
     useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 640) setVisibleCards(1);
+            else if (window.innerWidth < 1024) setVisibleCards(2);
+            else setVisibleCards(4);
+        };
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
         const interval = setInterval(() => {
-            nextSlide();
+            if (totalCards > visibleCards) {
+                setCurrentIndex((prev) => (prev + 1) % (totalCards - visibleCards + 1));
+            }
         }, 6000);
         return () => clearInterval(interval);
-    }, [currentIndex]);
+    }, [currentIndex, visibleCards, totalCards]);
 
     const nextSlide = () => {
         setCurrentIndex((prev) => (prev + 1) % (totalCards - visibleCards + 1));
@@ -23,18 +36,19 @@ const TeamSlider = () => {
     };
 
     return (
-        <div className="relative max-w-[1000px] mx-auto">
-            <div className="overflow-hidden p-4">
+        <div className="relative max-w-[1200px] mx-auto px-4 md:px-10">
+            <div className="overflow-hidden">
                 <div
-                    className="flex gap-12 transition-transform duration-[2000ms] ease-in-out"
-                    style={{ transform: `translateX(-${currentIndex * 248}px)` }}
+                    className="flex transition-transform duration-[1000ms] ease-in-out"
+                    style={{ transform: `translateX(-${currentIndex * (100 / visibleCards)}%)` }}
                 >
                     {teamMembers.map((member, idx) => (
                         <div
                             key={`${member.name}-${idx}`}
-                            className="w-[200px] flex-shrink-0 text-center group"
+                            className="flex-shrink-0 px-4 text-center group"
+                            style={{ width: `${100 / visibleCards}%` }}
                         >
-                            <div className="w-32 h-32 md:w-36 md:h-36 mx-auto rounded-full overflow-hidden border-4 border-transparent group-hover:border-[#EACCF2] transition-all duration-300 mb-6 shadow-sm group-hover:shadow-md">
+                            <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 mx-auto rounded-full overflow-hidden border-4 border-transparent group-hover:border-[#EACCF2] transition-all duration-300 mb-4 sm:mb-6 shadow-sm group-hover:shadow-md">
                                 <img
                                     src={member.image}
                                     alt={member.name}
@@ -42,29 +56,31 @@ const TeamSlider = () => {
                                 />
                             </div>
                             <div className="px-1">
-                                <h4 className="font-bold text-[#2D1B4E] text-lg font-serif mb-2">{member.name}</h4>
-                                <p className="text-gray-500 text-sm font-medium tracking-wide">{member.role}</p>
+                                <h4 className="font-bold text-[#2D1B4E] text-base sm:text-lg font-serif mb-1 sm:mb-2">{member.name}</h4>
+                                <p className="text-gray-500 text-xs sm:text-sm font-medium tracking-wide">{member.role}</p>
                             </div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* Navigation Buttons */}
-            <button
-                onClick={prevSlide}
-                className="absolute top-1/2 -left-4 md:-left-12 transform -translate-y-1/2 p-3 rounded-full bg-white shadow-lg text-[#2D1B4E] hover:bg-[#2D1B4E] hover:text-white transition-all z-10 border border-gray-100"
-                disabled={currentIndex === 0}
-            >
-                <ChevronLeft size={24} />
-            </button>
-            <button
-                onClick={nextSlide}
-                className="absolute top-1/2 -right-4 md:-right-12 transform -translate-y-1/2 p-3 rounded-full bg-white shadow-lg text-[#2D1B4E] hover:bg-[#2D1B4E] hover:text-white transition-all z-10 border border-gray-100"
-                disabled={currentIndex >= (totalCards - visibleCards)}
-            >
-                <ChevronRight size={24} />
-            </button>
+            {/* Navigation Buttons - Hidden if all visible */}
+            {totalCards > visibleCards && (
+                <>
+                    <button
+                        onClick={prevSlide}
+                        className="absolute top-1/2 -left-2 md:left-0 transform -translate-y-1/2 p-2 sm:p-3 rounded-full bg-white shadow-lg text-[#2D1B4E] hover:bg-[#2D1B4E] hover:text-white transition-all z-10 border border-gray-100"
+                    >
+                        <ChevronLeft size={20} className="sm:w-6 sm:h-6" />
+                    </button>
+                    <button
+                        onClick={nextSlide}
+                        className="absolute top-1/2 -right-2 md:right-0 transform -translate-y-1/2 p-2 sm:p-3 rounded-full bg-white shadow-lg text-[#2D1B4E] hover:bg-[#2D1B4E] hover:text-white transition-all z-10 border border-gray-100"
+                    >
+                        <ChevronRight size={20} className="sm:w-6 sm:h-6" />
+                    </button>
+                </>
+            )}
         </div>
     );
 };

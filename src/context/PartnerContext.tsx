@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { trustedPartners as initialPartners } from '@/data/homeData';
+import { safeSetItem, safeGetItem } from '@/utils/storage';
 
 export interface Partner {
     id: number;
@@ -18,12 +19,12 @@ const PartnerContext = createContext<PartnerContextType | undefined>(undefined);
 
 export const PartnerProvider = ({ children }: { children: ReactNode }) => {
     const [partners, setPartners] = useState<Partner[]>(() => {
-        const saved = localStorage.getItem('kottravai_partners');
+        const saved = safeGetItem('kottravai_partners');
         return saved ? JSON.parse(saved) : initialPartners;
     });
 
     useEffect(() => {
-        localStorage.setItem('kottravai_partners', JSON.stringify(partners));
+        safeSetItem('kottravai_partners', JSON.stringify(partners));
     }, [partners]);
 
     const addPartner = (partner: Omit<Partner, 'id'>) => {

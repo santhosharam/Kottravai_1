@@ -20,10 +20,25 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-    origin: '*',
+    origin: true, // Reflect the request origin
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'x-rtb-fingerprint-id', 'X-RTB-Fingerprint-Id'],
-    exposedHeaders: ['x-rtb-fingerprint-id', 'X-RTB-Fingerprint-Id'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Accept',
+        'x-rtb-fingerprint-id',
+        'X-RTB-Fingerprint-Id',
+        'razorpay_payment_id',
+        'razorpay_order_id',
+        'razorpay_signature'
+    ],
+    exposedHeaders: [
+        'x-rtb-fingerprint-id',
+        'X-RTB-Fingerprint-Id',
+        'Content-Range',
+        'X-Content-Range'
+    ],
     credentials: true
 }));
 
@@ -40,7 +55,6 @@ app.use((req, res, next) => {
     // Explicitly allow private network access for local tunnels (Chrome/Edge)
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
     res.setHeader('Permissions-Policy', 'accelerometer=*, gyroscope=*, magnetometer=*, payment=*');
-    res.setHeader('Access-Control-Expose-Headers', 'x-rtb-fingerprint-id, X-RTB-Fingerprint-Id');
     next();
 });
 
@@ -171,32 +185,35 @@ app.get('/api/products', async (req, res) => {
     try {
         const now = Date.now();
         // Return cached data if it's still fresh
-        if (productCache && (now - lastCacheUpdate < CACHE_DURATION)) {
+        if (productCache && (now - lastCacheUpdate < 600000)) { // 10 minutes cache
             console.log('⚡ Serving products from cache');
             return res.json(productCache);
         }
 
         console.log('🔍 Fetching products from database...');
+        // Optimized query: Subquery for reviews is much faster than LEFT JOIN + GROUP BY for large datasets
         const query = `
             SELECT p.*, 
-            COALESCE(
-                json_agg(
-                    json_build_object(
-                        'id', r.id,
-                        'productId', r.product_id,
-                        'userName', r.user_name,
-                        'email', r.email,
-                        'rating', r.rating,
-                        'comment', r.comment,
-                        'date', r.date
-                    ) 
-                ) FILTER (WHERE r.id IS NOT NULL), 
-                '[]'
+            (
+                SELECT COALESCE(json_agg(r_agg), '[]')
+                FROM (
+                    SELECT 
+                        id, 
+                        product_id as "productId", 
+                        user_name as "userName", 
+                        email, 
+                        rating, 
+                        comment, 
+                        date 
+                    FROM reviews 
+                    WHERE product_id = p.id
+                    ORDER BY date DESC
+                ) r_agg
             ) as reviews
             FROM products p
-            LEFT JOIN reviews r ON p.id = r.product_id
-            GROUP BY p.id
+            ORDER BY p.created_at DESC
         `;
+
         const result = await db.query(query);
 
         // Update Cache
@@ -205,6 +222,7 @@ app.get('/api/products', async (req, res) => {
 
         res.json(result.rows);
     } catch (err) {
+        console.error('❌ Products Fetch Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

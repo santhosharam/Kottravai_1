@@ -1,6 +1,7 @@
 
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { testimonials as homeTestimonials } from '../data/homeData';
+import { safeSetItem, safeGetItem } from '@/utils/storage';
 
 export interface Review {
     id: number;
@@ -62,12 +63,12 @@ const ReviewContext = createContext<ReviewContextType | undefined>(undefined);
 export const ReviewProvider = ({ children }: { children: ReactNode }) => {
     // Load from local storage or default to initialData
     const [reviews, setReviews] = useState<Review[]>(() => {
-        const saved = localStorage.getItem('kottravai_reviews');
+        const saved = safeGetItem('kottravai_reviews');
         return saved ? JSON.parse(saved) : initialData;
     });
 
     useEffect(() => {
-        localStorage.setItem('kottravai_reviews', JSON.stringify(reviews));
+        safeSetItem('kottravai_reviews', JSON.stringify(reviews));
     }, [reviews]);
 
     const addReview = (review: Omit<Review, 'id'>) => {
