@@ -16,13 +16,9 @@ if (!process.env.DATABASE_URL) {
 } else {
     try {
         const isLocal = process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1');
-        const connectionString = process.env.DATABASE_URL.includes('sslmode=require')
-            ? process.env.DATABASE_URL
-            : `${process.env.DATABASE_URL}?sslmode=require`;
-
         pool = new Pool({
-            connectionString: isLocal ? process.env.DATABASE_URL : connectionString,
-            ssl: isLocal ? false : { rejectUnauthorized: false }
+            connectionString: process.env.DATABASE_URL,
+            ssl: { rejectUnauthorized: false }
         });
     } catch (err) {
         console.error("❌ ERROR: Failed to create Postgres Pool:", err);
