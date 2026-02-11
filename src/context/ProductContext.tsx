@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Product, categories } from '@/data/products';
 import { safeSetItem, safeGetItem } from '@/utils/storage';
 
-const API_URL = `${import.meta.env.VITE_API_URL || '/api'}/products`;
+const API_URL = `${import.meta.env.VITE_API_URL || 'https://kottravai.in/api'}/products`;
 interface ProductContextType {
     products: Product[];
     addProduct: (product: Product) => Promise<void>;

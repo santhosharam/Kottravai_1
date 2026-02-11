@@ -16,8 +16,12 @@ if (!process.env.DATABASE_URL) {
 } else {
     try {
         const isLocal = process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1');
+        const connectionString = process.env.DATABASE_URL.includes('sslmode=require')
+            ? process.env.DATABASE_URL
+            : `${process.env.DATABASE_URL}?sslmode=require`;
+
         pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
+            connectionString: isLocal ? process.env.DATABASE_URL : connectionString,
             ssl: isLocal ? false : { rejectUnauthorized: false }
         });
     } catch (err) {
