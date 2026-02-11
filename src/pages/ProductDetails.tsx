@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import axios from 'axios';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
 import { useCart } from '@/context/CartContext';
 import { useProducts } from '@/context/ProductContext';
-import { ShoppingBag, Star, Heart, Minus, Plus, X, Check, Share2 } from 'lucide-react';
+import { ShoppingBag, Star, Heart, Minus, Plus, X, Check, Share2, MessageCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { generateWhatsAppLink, openWhatsApp } from '@/utils/whatsapp';
+import WhatsAppConfirmModal from '@/components/whatsapp/WhatsAppConfirmModal';
 
 const ProductDetails = () => {
     const { slug } = useParams();
@@ -24,6 +28,62 @@ const ProductDetails = () => {
     });
 
     const [selectedVariant, setSelectedVariant] = useState<any>(null);
+
+    // Custom Request State
+    const [isCustomRequestOpen, setIsCustomRequestOpen] = useState(false);
+    const [isSubmittingCustom, setIsSubmittingCustom] = useState(false);
+    const [customForm, setCustomForm] = useState({
+        name: '', email: '', phone: '', message: '', referenceImage: ''
+    });
+
+    const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+
+    const handleWhatsAppOrder = (city?: string) => {
+        const link = generateWhatsAppLink({
+            productName: product?.name || '',
+            productId: product?.id || '',
+            price: selectedVariant ? selectedVariant.price * quantity : (product?.price || 0) * quantity,
+            quantity: quantity,
+            size: selectedVariant?.weight,
+            customerCity: city
+        });
+        openWhatsApp(link);
+        setIsWhatsAppModalOpen(false);
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setCustomForm({ ...customForm, referenceImage: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleCustomSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmittingCustom(true);
+        try {
+            await axios.post(`${import.meta.env.VITE_API_URL || '/api'}/custom-request`, {
+                productName: product?.name,
+                name: customForm.name,
+                email: customForm.email,
+                phone: customForm.phone,
+                requestedText: customForm.message,
+                referenceImage: customForm.referenceImage
+            });
+            toast.success('Custom request sent successfully! We will contact you soon.');
+            setIsCustomRequestOpen(false);
+            setCustomForm({ name: '', email: '', phone: '', message: '', referenceImage: '' });
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to send request. Please try again.');
+        } finally {
+            setIsSubmittingCustom(false);
+        }
+    };
 
 
     useEffect(() => {
@@ -126,11 +186,11 @@ const ProductDetails = () => {
                         <div className="mb-2">
                             <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-[#b5128f] opacity-60">{product.category}</span>
                         </div>
-                        <h1 className="text-3xl md:text-5xl font-serif font-black text-[#2D1B4E] mb-6 leading-[1.1]">{product.name}</h1>
+                        <h1 className="text-3xl md:text-5xl font-black text-[#2D1B4E] mb-6 leading-[1.1]">{product.name}</h1>
 
                         <div className="flex items-center gap-4 mb-8">
                             {product.isCustomRequest ? (
-                                <span className="text-2xl font-bold text-[#8E2A8B] bg-purple-50 px-5 py-3 rounded-2xl border border-purple-100 font-serif italic">Price on Request</span>
+                                <span className="text-2xl font-bold text-[#8E2A8B] bg-purple-50 px-5 py-3 rounded-2xl border border-purple-100 italic">Price on Request</span>
                             ) : (
                                 <span className="text-4xl font-black text-[#b5128f]">₹{Number(selectedVariant ? selectedVariant.price * quantity : product.price * quantity).toLocaleString('en-IN')}</span>
                             )}
@@ -149,15 +209,15 @@ const ProductDetails = () => {
                         {/* Variant Selection */}
                         {!product.isCustomRequest && product.variants && product.variants.length > 0 && (
                             <div className="mb-8 space-y-4">
-                                <label className="block text-[11px] font-black uppercase tracking-widest text-gray-500">Pick Your Size / Weight</label>
+                                <label className="block text-[11px] font-black uppercase tracking-widest text-gray-500 mb-3">Select Grams</label>
                                 <div className="flex flex-wrap gap-3">
                                     {product.variants.map((variant, idx) => (
                                         <button
                                             key={idx}
                                             onClick={() => setSelectedVariant(variant)}
-                                            className={`px-6 py-3 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-widest ${selectedVariant?.weight === variant.weight ? 'border-[#b5128f] bg-[#b5128f] text-white shadow-lg shadow-[#b5128f]/20' : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:bg-gray-50'}`}
+                                            className={`min-w-[80px] px-4 py-2 rounded-xl border-2 transition-all font-bold text-sm ${selectedVariant?.weight === variant.weight ? 'border-[#b5128f] bg-[#b5128f] text-white shadow-lg shadow-[#b5128f]/20' : 'border-gray-100 text-gray-600 hover:border-[#b5128f] hover:text-[#b5128f]'}`}
                                         >
-                                            {variant.weight} - ₹{variant.price}
+                                            {variant.weight}{/^\d+$/.test(variant.weight) ? 'g' : ''}
                                         </button>
                                     ))}
                                 </div>
@@ -195,10 +255,17 @@ const ProductDetails = () => {
                                 >
                                     Instant Checkout
                                 </button>
+                                <button
+                                    onClick={() => setIsWhatsAppModalOpen(true)}
+                                    className="w-full h-16 rounded-[1.25rem] font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-[#25D366] bg-[#25D366] text-white hover:bg-transparent hover:text-[#25D366] flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-green-500/10"
+                                >
+                                    <MessageCircle size={20} />
+                                    Order on WhatsApp
+                                </button>
                             </div>
                         ) : (
                             <div className="mb-12">
-                                <button onClick={() => navigate('/contact')} className="w-full h-16 bg-black text-white rounded-[1.25rem] font-black uppercase tracking-widest text-xs hover:bg-[#b5128f] transition-colors">Request Price List</button>
+                                <button onClick={() => setIsCustomRequestOpen(true)} className="w-full h-16 bg-black text-white rounded-[1.25rem] font-black uppercase tracking-widest text-xs hover:bg-[#b5128f] transition-colors">Request Customization</button>
                             </div>
                         )}
 
@@ -230,7 +297,7 @@ const ProductDetails = () => {
                         ))}
                     </div>
 
-                    <div className="max-w-4xl">
+                    <div className="w-full">
                         {activeTab === 'description' && (
                             <div className="text-gray-500 leading-loose font-medium space-y-8 animate-in fade-in duration-500">
                                 <div className="text-base whitespace-pre-wrap">{product.description}</div>
@@ -296,7 +363,7 @@ const ProductDetails = () => {
                 {/* Related Products */}
                 {relatedProducts.length > 0 && (
                     <div className="mt-32 pt-20 border-t border-gray-100">
-                        <h3 className="text-4xl font-serif font-black text-[#2D1B4E] mb-12">Related <span className="text-[#b5128f]">Excellence</span></h3>
+                        <h3 className="text-4xl font-black text-[#2D1B4E] mb-12">Related <span className="text-[#b5128f]">Excellence</span></h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
                             {relatedProducts.map(rel => (
                                 <Link key={rel.id} to={`/product/${rel.slug}`} className="group">
@@ -337,7 +404,7 @@ const ProductDetails = () => {
                     <div className="absolute inset-0 bg-[#2D1B4E]/40 backdrop-blur-sm" onClick={() => setIsReviewPanelOpen(false)}></div>
                     <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in fade-in slide-in-from-bottom duration-500">
                         <button onClick={() => setIsReviewPanelOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-black transition-colors"><X size={24} /></button>
-                        <h3 className="text-3xl font-serif font-black text-[#2D1B4E] mb-2">Share Your Story</h3>
+                        <h3 className="text-3xl font-black text-[#2D1B4E] mb-2">Share Your Story</h3>
                         <p className="text-gray-400 text-sm mb-8 font-medium">Your feedback inspires our craftsmanship.</p>
 
                         <form onSubmit={handleSubmitReview} className="space-y-6">
@@ -358,6 +425,44 @@ const ProductDetails = () => {
                     </div>
                 </div>
             )}
+
+            {/* Custom Request Modal */}
+            {isCustomRequestOpen && (
+                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#2D1B4E]/40 backdrop-blur-sm" onClick={() => setIsCustomRequestOpen(false)}></div>
+                    <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in fade-in slide-in-from-bottom duration-500 max-h-[90vh] overflow-y-auto">
+                        <button onClick={() => setIsCustomRequestOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-black transition-colors"><X size={24} /></button>
+                        <h3 className="text-3xl font-black text-[#2D1B4E] mb-2">Custom Request</h3>
+                        <p className="text-gray-400 text-sm mb-8 font-medium">Tell us what you need, and we'll craft it for you.</p>
+
+                        <form onSubmit={handleCustomSubmit} className="space-y-6">
+                            <div className="space-y-4">
+                                <input required placeholder="Your Name" className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-[#b5128f]/20 outline-none" value={customForm.name} onChange={e => setCustomForm({ ...customForm, name: e.target.value })} />
+                                <input required type="email" placeholder="Email Address" className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-[#b5128f]/20 outline-none" value={customForm.email} onChange={e => setCustomForm({ ...customForm, email: e.target.value })} />
+                                <input required type="tel" placeholder="Phone Number" className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-[#b5128f]/20 outline-none" value={customForm.phone} onChange={e => setCustomForm({ ...customForm, phone: e.target.value })} />
+
+                                <textarea rows={4} placeholder="Describe your custom requirement..." className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-[#b5128f]/20 outline-none" value={customForm.message} onChange={e => setCustomForm({ ...customForm, message: e.target.value })}></textarea>
+
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Reference Image (Optional)</label>
+                                    <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
+                                    {customForm.referenceImage && <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><Check size={12} /> Image selected</p>}
+                                </div>
+                            </div>
+                            <button type="submit" disabled={isSubmittingCustom} className="w-full bg-[#b5128f] text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-[#b5128f]/20 hover:bg-[#910e73] transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
+                                {isSubmittingCustom ? 'Sending...' : 'Send Request'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            <WhatsAppConfirmModal
+                isOpen={isWhatsAppModalOpen}
+                onClose={() => setIsWhatsAppModalOpen(false)}
+                onConfirm={handleWhatsAppOrder}
+                productName={product.name}
+            />
         </MainLayout>
     );
 };

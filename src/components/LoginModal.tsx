@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Eye, EyeOff, Phone, User, Lock, ArrowRight, RefreshCw } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, User, Lock, ArrowRight, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const LoginModal: React.FC = () => {
-    const { isLoginModalOpen, closeLoginModal, login, signUp, sendOTP, verifyOTP } = useAuth();
+    const { isLoginModalOpen, closeLoginModal, login, signUp, sendEmailOTP, verifyEmailOTP, resetPasswordWithOTP } = useAuth();
     const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
     const [showPassword, setShowPassword] = useState(false);
 
     // Form fields
-    const [name, setName] = useState('');
     const [username, setUsername] = useState('');
-    const [mobile, setMobile] = useState('');
+    const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [password, setPassword] = useState('');
 
@@ -35,21 +34,22 @@ const LoginModal: React.FC = () => {
     if (!isLoginModalOpen) return null;
 
     const handleSendOTP = async () => {
-        if (!mobile || mobile.length !== 10) {
-            setError("Please enter a valid 10-digit mobile number.");
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailRegex.test(email)) {
+            setError("Please enter a valid email address.");
             return;
         }
 
         setIsSubmitting(true);
         setError(null);
         try {
-            const { error: otpError } = await sendOTP(mobile);
+            const { error: otpError } = await sendEmailOTP(email, mode === 'forgot' ? 'forgot' : 'signup');
             if (otpError) {
                 setError(otpError.message || "Failed to send OTP.");
             } else {
                 setIsOtpSent(true);
                 setOtpTimer(60);
-                setSuccessMessage("OTP sent to your mobile number!");
+                setSuccessMessage("OTP sent to your email!");
             }
         } catch (err) {
             setError("An error occurred. Please try again.");
@@ -64,9 +64,9 @@ const LoginModal: React.FC = () => {
         setError(null);
         setSuccessMessage(null);
 
-        if (mode === 'signup') {
+        if (mode === 'signup' || mode === 'forgot') {
             if (!isOtpVerified) {
-                setError("Please verify your mobile number first.");
+                setError("Please verify your email address first.");
                 return;
             }
             if (password.length < 8) {
@@ -78,11 +78,11 @@ const LoginModal: React.FC = () => {
         setIsSubmitting(true);
         try {
             if (mode === 'login') {
-                const { error: loginError } = await login(username, password);
+                const { error: loginError } = await login(email, password);
                 if (loginError) setError(loginError.message);
                 else closeLoginModal();
             } else if (mode === 'signup') {
-                const { error: signUpError } = await signUp(username, password, mobile, name);
+                const { error: signUpError } = await signUp(username, email, password, otp);
                 if (signUpError) {
                     setError(signUpError.message);
                 } else {
@@ -90,8 +90,16 @@ const LoginModal: React.FC = () => {
                     // Login is automatic in our AuthContext
                 }
             } else if (mode === 'forgot') {
-                // Not fully implemented in backend yet, but UI placeholder
-                setError("Password recovery is currently limited. Please contact support.");
+                const { error: resetError } = await resetPasswordWithOTP(email, otp, password);
+                if (resetError) {
+                    setError(resetError.error || resetError.message);
+                } else {
+                    setSuccessMessage("Password reset successfully! You can now sign in.");
+                    setTimeout(() => {
+                        setMode('login');
+                        resetFields();
+                    }, 2000);
+                }
             }
         } catch (err: any) {
             setError("An unexpected error occurred. Please try again.");
@@ -106,9 +114,8 @@ const LoginModal: React.FC = () => {
     };
 
     const resetFields = () => {
-        setName('');
         setUsername('');
-        setMobile('');
+        setEmail('');
         setPassword('');
         setOtp('');
         setIsOtpSent(false);
@@ -128,17 +135,17 @@ const LoginModal: React.FC = () => {
                 {/* Header Image */}
                 <div className="relative h-40 sm:h-48 overflow-hidden">
                     <img
-                        src="https://images.unsplash.com/photo-1610665518460-29c303350326?q=80&w=1000&auto=format&fit=crop"
+                        src="/kk.png"
                         alt="Kottravai"
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
                         <div>
-                            <h2 className="text-2xl font-serif font-bold text-white uppercase tracking-[0.15em]">
+                            <h2 className="text-2xl font-black text-white uppercase tracking-[0.15em]">
                                 {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Join Us' : 'Recovery'}
                             </h2>
                             <p className="text-white/60 text-xs mt-1 uppercase tracking-widest font-medium">
-                                {mode === 'login' ? 'Sign in to continue' : mode === 'signup' ? 'Create a mobile verified account' : 'Reset your credentials'}
+                                {mode === 'login' ? 'Sign in to continue' : mode === 'signup' ? 'Create an email verified account' : 'Reset your credentials'}
                             </p>
                         </div>
                     </div>
@@ -155,7 +162,7 @@ const LoginModal: React.FC = () => {
                 <div className="p-8 sm:p-10 bg-white">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-3">
-                            {/* Signup specific field: Full Name */}
+                            {/* Username field (Signup only) */}
                             {mode === 'signup' && (
                                 <div className="relative group">
                                     <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#b5128f] transition-colors">
@@ -163,60 +170,44 @@ const LoginModal: React.FC = () => {
                                     </div>
                                     <input
                                         type="text"
-                                        placeholder="Full Name"
+                                        placeholder="Username"
                                         required
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
                                         onFocus={handleInputFocus}
                                         className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-transparent rounded-2xl text-gray-700 placeholder-gray-400 focus:bg-white focus:border-[#b5128f]/20 focus:ring-4 focus:ring-[#b5128f]/5 outline-none transition-all"
                                     />
                                 </div>
                             )}
 
-                            {/* Username field (Shared by login/signup) */}
+                            {/* Email field (Shared by login/signup) */}
                             <div className="relative group">
                                 <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#b5128f] transition-colors">
-                                    <User size={18} />
+                                    <Mail size={18} />
                                 </div>
                                 <input
-                                    type="text"
-                                    placeholder={mode === 'login' ? "Mobile Number" : "Username"}
+                                    type="email"
+                                    placeholder="Email Address"
                                     required
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value.toLowerCase())}
                                     onFocus={handleInputFocus}
                                     className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-transparent rounded-2xl text-gray-700 placeholder-gray-400 focus:bg-white focus:border-[#b5128f]/20 focus:ring-4 focus:ring-[#b5128f]/5 outline-none transition-all"
                                 />
                             </div>
 
-                            {/* Mobile field (Signup only) */}
-                            {mode === 'signup' && (
+                            {/* Email OTP Verification (Signup and Forgot) */}
+                            {(mode === 'signup' || mode === 'forgot') && (
                                 <div className="space-y-3">
                                     <div className="relative group flex gap-2">
-                                        <div className="relative flex-1">
-                                            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#b5128f] transition-colors">
-                                                <Phone size={18} />
-                                            </div>
-                                            <input
-                                                type="tel"
-                                                placeholder="10-digit Mobile"
-                                                required
-                                                maxLength={10}
-                                                value={mobile}
-                                                onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-                                                onFocus={handleInputFocus}
-                                                disabled={isOtpVerified}
-                                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-transparent rounded-2xl text-gray-700 placeholder-gray-400 focus:bg-white focus:border-[#b5128f]/20 focus:ring-4 focus:ring-[#b5128f]/5 outline-none transition-all disabled:opacity-50"
-                                            />
-                                        </div>
                                         {!isOtpVerified && !isOtpSent && (
                                             <button
                                                 type="button"
                                                 onClick={handleSendOTP}
-                                                disabled={mobile.length !== 10 || isSubmitting}
-                                                className="px-6 bg-[#b5128f] text-white rounded-2xl font-bold text-xs uppercase tracking-wider hover:bg-black transition-colors disabled:bg-gray-200 disabled:text-gray-400"
+                                                disabled={!email || isSubmitting}
+                                                className="w-full px-6 py-4 bg-[#b5128f] text-white rounded-2xl font-bold text-xs uppercase tracking-wider hover:bg-black transition-colors disabled:bg-gray-200 disabled:text-gray-400"
                                             >
-                                                {isSubmitting ? '...' : 'Verify'}
+                                                {isSubmitting ? 'Sending...' : 'Send Verification Code'}
                                             </button>
                                         )}
                                     </div>
@@ -241,11 +232,11 @@ const LoginModal: React.FC = () => {
                                                     type="button"
                                                     onClick={async () => {
                                                         setIsSubmitting(true);
-                                                        const { error: vErr } = await verifyOTP(mobile, otp);
+                                                        const { error: vErr } = await verifyEmailOTP(email, otp);
                                                         if (vErr) setError(vErr.message);
                                                         else {
                                                             setIsOtpVerified(true);
-                                                            setSuccessMessage("Mobile verified successfully!");
+                                                            setSuccessMessage("Email verified successfully!");
                                                         }
                                                         setIsSubmitting(false);
                                                     }}
@@ -270,21 +261,21 @@ const LoginModal: React.FC = () => {
                                     {isOtpVerified && (
                                         <div className="flex items-center gap-2 px-5 py-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
                                             <RefreshCw size={14} className="text-emerald-400" />
-                                            <span className="text-[10px] font-bold uppercase tracking-widest">Number Verified</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Email Verified</span>
                                         </div>
                                     )}
                                 </div>
                             )}
 
                             {/* Password field */}
-                            {mode !== 'forgot' && (
+                            {(mode !== 'forgot' || isOtpVerified) && (
                                 <div className="relative group">
                                     <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#b5128f] transition-colors">
                                         <Lock size={18} />
                                     </div>
                                     <input
                                         type={showPassword ? "text" : "password"}
-                                        placeholder="Password"
+                                        placeholder={mode === 'forgot' ? "New Password" : "Password"}
                                         required
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -322,7 +313,10 @@ const LoginModal: React.FC = () => {
                             <div className="flex justify-start">
                                 <button
                                     type="button"
-                                    onClick={() => setMode('forgot')}
+                                    onClick={() => {
+                                        resetFields();
+                                        setMode('forgot');
+                                    }}
                                     className="text-xs font-bold text-gray-400 hover:text-[#b5128f] transition-colors uppercase tracking-widest"
                                 >
                                     Forgot password?

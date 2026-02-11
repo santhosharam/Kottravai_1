@@ -43,15 +43,15 @@ const BestSellers = () => {
     };
 
     return (
-        <section className="py-20 bg-white">
+        <section className="py-10 bg-white">
             <div className="container px-4">
-                <div className="text-center mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 font-serif">Best Sellers</h2>
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">Best Sellers</h2>
                     <div className="w-24 h-1 bg-primary mx-auto"></div>
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="flex justify-center mb-8 px-4 overflow-x-auto no-scrollbar">
+                <div className="flex justify-center mb-6 px-4 overflow-x-auto no-scrollbar">
                     <div className="flex space-x-4 md:space-x-8 text-sm md:text-base font-medium text-gray-500 min-w-max pb-2">
                         <button
                             onClick={() => setActiveTab('All Products')}

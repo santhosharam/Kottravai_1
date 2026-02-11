@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import MainLayout from '@/layouts/MainLayout';
 import HeroSlider from '@/components/home/HeroSlider';
 import BestSellers from '@/components/home/BestSellers';
-import GiftHampers from '@/components/home/GiftHampers';
+
 import JournalSection from '@/components/home/JournalSection';
 import TrustedPartners from '@/components/home/TrustedPartners';
 import VideoGallery from '@/components/home/VideoGallery';
@@ -27,7 +27,7 @@ const Home = () => {
             <BestSellers />
 
             {/* 4. Gift Hampers / Collections */}
-            <GiftHampers />
+
 
             {/* 5. The Kottravai Journal */}
             <JournalSection />

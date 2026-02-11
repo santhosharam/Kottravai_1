@@ -3,7 +3,7 @@ import * as Icons from 'lucide-react';
 
 const ValueProps = () => {
     return (
-        <section className="py-12 bg-white border-t border-gray-100">
+        <section className="py-6 bg-white border-t border-gray-100">
             <div className="container px-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     {valueProps.map((prop) => {

@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Image as ImageIcon, Trash2, X, Upload, Pencil, MessageSquareQuote, Package, ShoppingBag, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, DollarSign, Handshake, Video, Newspaper, Users, LogOut, Search, Bell, Activity, ArrowUpRight, ArrowDownRight, MoreVertical, Calendar, Clock } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 import { categories } from '@/data/products';
+import toast from 'react-hot-toast';
 
 
 const AdminDashboard = () => {
@@ -257,10 +258,10 @@ const AdminDashboard = () => {
         e.preventDefault();
 
         // 1. Validation
-        if (!formData.name.trim()) return alert("Product Name is required");
-        if (!formData.isCustomRequest && (!formData.price || isNaN(parseFloat(formData.price)))) return alert("Please enter a valid price");
-        if (!formData.category) return alert("Please select a category");
-        if (!mainImage) return alert("Main Product Image is required");
+        if (!formData.name.trim()) return toast.error("Product Name is required");
+        if (!formData.isCustomRequest && (!formData.price || isNaN(parseFloat(formData.price)))) return toast.error("Please enter a valid price");
+        if (!formData.category) return toast.error("Please select a category");
+        if (!mainImage) return toast.error("Main Product Image is required");
 
         // Find category name from slug
         const categoryObj = categories.find(c => c.slug === formData.category);
@@ -294,10 +295,10 @@ const AdminDashboard = () => {
 
             if (editingId) {
                 await updateProduct(productData);
-                alert('Product Updated Successfully!');
+                toast.success('Product Updated Successfully!');
             } else {
                 await addProduct(productData);
-                alert('Product Added Successfully!');
+                toast.success('Product Added Successfully!');
             }
 
             setView('list');
@@ -306,14 +307,14 @@ const AdminDashboard = () => {
         } catch (error: any) {
             console.error("Failed to save product:", error);
             const errorMessage = error.response?.data?.error || error.message || "Unknown error";
-            alert(`Failed to save product: ${errorMessage}`);
+            toast.error(`Failed to save product: ${errorMessage}`);
         }
     }
 
 
     const handleAddVideo = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newVideo.title || !newVideo.url) return alert("Please fill in both fields");
+        if (!newVideo.title || !newVideo.url) return toast.error("Please fill in both fields");
 
         // Simple embed conversion if user pastes full URL
         let embedUrl = newVideo.url;
@@ -326,10 +327,10 @@ const AdminDashboard = () => {
         if (editingVideoId) {
             updateVideo({ id: editingVideoId, title: newVideo.title, url: embedUrl });
             setEditingVideoId(null);
-            alert("Video updated successfully");
+            toast.success("Video updated successfully");
         } else {
             addVideo({ title: newVideo.title, url: embedUrl });
-            alert("Video added successfully");
+            toast.success("Video added successfully");
         }
 
         setNewVideo({ title: '', url: '' });
@@ -349,17 +350,17 @@ const AdminDashboard = () => {
     // News Handlers
     const handleAddNews = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newsForm.title || !newsForm.category || !newsForm.date || !newsForm.link) return alert("Please fill all fields");
+        if (!newsForm.title || !newsForm.category || !newsForm.date || !newsForm.link) return toast.error("Please fill all fields");
 
         const newsData = { ...newsForm };
 
         if (editingNewsId) {
             updateNewsItem({ id: editingNewsId, ...newsData });
             setEditingNewsId(null);
-            alert("News updated successfully");
+            toast.success("News updated successfully");
         } else {
             addNewsItem(newsData);
-            alert("News added successfully");
+            toast.success("News added successfully");
         }
         setNewsForm({ title: '', category: '', date: '', image: '', link: '' });
     };
@@ -384,7 +385,7 @@ const AdminDashboard = () => {
     // Review Handlers
     const handleAddReview = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!reviewForm.name || !reviewForm.content) return alert("All fields are required");
+        if (!reviewForm.name || !reviewForm.content) return toast.error("All fields are required");
 
         const reviewData = {
             ...reviewForm,
@@ -394,10 +395,10 @@ const AdminDashboard = () => {
         if (editingReviewId) {
             updateReview({ id: editingReviewId, ...reviewData });
             setEditingReviewId(null);
-            alert("Review updated successfully");
+            toast.success("Review updated successfully");
         } else {
             addReview(reviewData);
-            alert("Review added successfully");
+            toast.success("Review added successfully");
         }
         setReviewForm({ name: '', role: '', content: '', image: '', rating: 5 });
     };
@@ -433,17 +434,17 @@ const AdminDashboard = () => {
     // Partner Handlers
     const handleAddPartner = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!partnerForm.name) return alert("Partner Name is required");
+        if (!partnerForm.name) return toast.error("Partner Name is required");
 
         const partnerData = { ...partnerForm };
 
         if (editingPartnerId) {
             updatePartner({ id: editingPartnerId, ...partnerData });
             setEditingPartnerId(null);
-            alert("Partner updated successfully");
+            toast.success("Partner updated successfully");
         } else {
             addPartner(partnerData);
-            alert("Partner added successfully");
+            toast.success("Partner added successfully");
         }
         setPartnerForm({ name: '', logo: '' });
     };

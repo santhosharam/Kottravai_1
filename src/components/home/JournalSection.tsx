@@ -6,11 +6,11 @@ const JournalSection = () => {
     const { newsItems } = useNews();
 
     return (
-        <section className="py-20 bg-white">
+        <section className="py-10 bg-white">
             <div className="container px-4">
                 {/* Header */}
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4 font-serif">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-4">
                         {journalData.mainHeading}
                     </h2>
                     <p className="text-gray-500 max-w-2xl mx-auto">
@@ -19,7 +19,7 @@ const JournalSection = () => {
                 </div>
 
                 {/* Featured Story */}
-                <div className="bg-white mb-16 flex flex-col lg:flex-row gap-12 items-center">
+                <div className="bg-white mb-8 flex flex-col lg:flex-row gap-12 items-center">
                     {/* Featured Image */}
                     <div className="lg:w-3/5 w-full h-[400px] rounded-2xl overflow-hidden shadow-sm">
                         <img

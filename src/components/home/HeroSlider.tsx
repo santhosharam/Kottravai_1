@@ -1,132 +1,307 @@
-import { useState, useEffect } from 'react';
-import { heroSlides } from '@/data/homeData';
+import { useState, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
+
+const SLIDES = [
+    {
+        id: 1,
+        image: "https://kottravai.in/wp-content/uploads/2025/12/WhatsApp-Image-2025-12-30-at-4.20.58-PM-e1767163041511.jpeg",
+        link: "#"
+    },
+    {
+        id: 2,
+        image: "https://kottravai.in/wp-content/uploads/2025/12/WhatsApp-Image-2025-12-31-at-10.16.33-AM-e1767163411201.jpeg",
+        link: "#"
+    }
+];
 
 const HeroSlider = () => {
-    const [current, setCurrent] = useState(0);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isAnimating, setIsAnimating] = useState(false);
 
-    // Auto-scroll functionality
+    // Refs to access state inside intervals/timeouts without stale closures
+    const currentIndexRef = useRef(0);
+    const isAnimatingRef = useRef(false);
+    const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Sync refs with state
     useEffect(() => {
-        if (heroSlides.length <= 1) return; // Don't scroll if only 1 slide
-        const interval = setInterval(() => {
-            setCurrent(prev => (prev === heroSlides.length - 1 ? 0 : prev + 1));
-        }, 6000); // 6 seconds for better readability
-        return () => clearInterval(interval);
+        currentIndexRef.current = currentIndex;
+    }, [currentIndex]);
+
+    useEffect(() => {
+        isAnimatingRef.current = isAnimating;
+    }, [isAnimating]);
+
+    // Initialize slides and start autoplay
+    useEffect(() => {
+        // Set initial positions
+        slideRefs.current.forEach((slide, index) => {
+            if (slide) {
+                // Ensure base styles
+                slide.style.transition = 'transform 0.8s ease-in-out';
+                slide.style.display = 'flex'; // Ensure flex from CSS is kept
+
+                if (index === 0) {
+                    slide.classList.add('active');
+                    slide.style.transform = 'translateX(0)';
+                    slide.style.zIndex = '2';
+                } else {
+                    slide.classList.remove('active');
+                    slide.style.transform = 'translateX(100%)';
+                    slide.style.zIndex = '1';
+                }
+            }
+        });
+
+        startInterval();
+
+        return () => stopInterval();
     }, []);
 
-    const nextSlide = () => {
-        if (heroSlides.length <= 1) return;
-        setCurrent(current === heroSlides.length - 1 ? 0 : current + 1);
+    const startInterval = () => {
+        stopInterval();
+        intervalRef.current = setInterval(() => {
+            handleNext();
+        }, 4000);
     };
 
-    const prevSlide = () => {
-        if (heroSlides.length <= 1) return;
-        setCurrent(current === 0 ? heroSlides.length - 1 : current - 1);
+    const stopInterval = () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
     };
 
-    if (!heroSlides.length) return null;
+    const resetInterval = () => {
+        stopInterval();
+        startInterval();
+    };
+
+    const showSlide = (index: number, direction: 'next' | 'prev') => {
+        if (isAnimatingRef.current) return;
+
+        const currentIdx = currentIndexRef.current;
+        if (index === currentIdx) return;
+
+        setIsAnimating(true);
+
+        const currentSlide = slideRefs.current[currentIdx];
+        const nextSlide = slideRefs.current[index];
+
+        if (!currentSlide || !nextSlide) {
+            setIsAnimating(false);
+            return;
+        }
+
+        // Remove transition momentarily to position the next slide
+        nextSlide.style.transition = 'none';
+        currentSlide.style.transition = 'transform 0.8s ease-in-out';
+
+        if (direction === 'next') {
+            // Prepare next slide on Right
+            nextSlide.style.transform = 'translateX(100%)';
+            nextSlide.style.zIndex = '2';
+            currentSlide.style.zIndex = '1';
+
+            // Force reflow
+            void nextSlide.offsetWidth;
+            nextSlide.style.transition = 'transform 0.8s ease-in-out';
+
+            // Animate
+            requestAnimationFrame(() => {
+                if (currentSlide) currentSlide.style.transform = 'translateX(-100%)';
+                if (nextSlide) nextSlide.style.transform = 'translateX(0)';
+            });
+        } else {
+            // Prev
+            // Prepare next slide on Left
+            nextSlide.style.transform = 'translateX(-100%)';
+            nextSlide.style.zIndex = '2';
+            currentSlide.style.zIndex = '1';
+
+            // Force reflow
+            void nextSlide.offsetWidth;
+            nextSlide.style.transition = 'transform 0.8s ease-in-out';
+
+            // Animate
+            requestAnimationFrame(() => {
+                if (currentSlide) currentSlide.style.transform = 'translateX(100%)';
+                if (nextSlide) nextSlide.style.transform = 'translateX(0)';
+            });
+        }
+
+        // Update state after animation
+        setTimeout(() => {
+            if (currentSlide) {
+                currentSlide.classList.remove('active');
+                // Reset styling for the inactive slide to ensure it stays invisible/formatted correctly
+                // currentSlide.style.transform = 'translateX(100%)'; // Optional cleanup, but keeping it where it landed is generally fine until next usage
+            }
+            if (nextSlide) {
+                nextSlide.classList.add('active');
+            }
+            setCurrentIndex(index);
+            setIsAnimating(false);
+        }, 800);
+    };
+
+    const handleNext = () => {
+        const current = currentIndexRef.current;
+        const nextIndex = (current + 1) >= SLIDES.length ? 0 : current + 1;
+        showSlide(nextIndex, 'next');
+    };
+
+    const handleDotClick = (index: number) => {
+        const current = currentIndexRef.current;
+        if (index === current || isAnimatingRef.current) return;
+
+        const dir = index > current ? 'next' : 'prev';
+        showSlide(index, dir);
+        resetInterval();
+    };
 
     return (
-        <section className="relative w-full overflow-hidden bg-[#faf7f2]">
-            {/* Reduced height as requested */}
-            <div className="relative w-full h-[50vh] md:h-[450px] lg:h-[550px]">
-                {heroSlides.map((slide, index) => {
-                    let positionClass = 'translate-x-full opacity-0 z-0'; // Default: Parked right
+        <>
+            <Helmet>
+                <link
+                    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Raleway:wght@300;400;500&display=swap"
+                    rel="stylesheet"
+                />
+            </Helmet>
 
-                    const isCurrent = index === current;
-                    const isPrev = index === (current === 0 ? heroSlides.length - 1 : current - 1);
-                    const isNext = index === (current === heroSlides.length - 1 ? 0 : current + 1);
+            <style>{`
+                /* Scoped Styles for Kottravai Banner */
+                .kottravai-banner {
+                    position: relative;
+                    width: 100%;
+                    height: 600px;
+                    overflow: hidden;
+                    font-family: 'Raleway', sans-serif;
+                    background-color: #f5f5f5;
+                }
 
-                    // If simple fade or 1 slide, force active
-                    if (heroSlides.length === 1) {
-                        positionClass = 'translate-x-0 opacity-100 z-20';
-                    } else {
-                        if (isCurrent) {
-                            positionClass = 'translate-x-0 opacity-100 z-20';
-                        } else if (isPrev) {
-                            positionClass = '-translate-x-full opacity-100 z-10';
-                        } else if (isNext) {
-                            positionClass = 'translate-x-full opacity-100 z-10';
-                        }
+                .kottravai-banner * {
+                    box-sizing: border-box;
+                }
+
+                /* Slide wrapper */
+                .kottravai-banner .banner-container {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                }
+
+                /* Individual Slide */
+                .kottravai-banner .banner-slide {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    z-index: 1;
+                    /* Transition handled via JS inline styles mostly */
+                    transition: transform 0.8s ease-in-out;
+                }
+
+                .kottravai-banner .banner-slide.active {
+                    z-index: 2;
+                }
+
+                /* Clickable Area */
+                .kottravai-banner .banner-link {
+                    display: block;
+                    width: 100%;
+                    height: 100%;
+                    text-decoration: none;
+                    color: inherit;
+                    position: relative;
+                }
+
+                /* Background Image */
+                .kottravai-banner .banner-bg {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    object-position: center;
+                }
+
+                /* Dot Navigation */
+                .kottravai-banner .banner-nav {
+                    position: absolute;
+                    bottom: 30px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 10;
+                    display: flex;
+                    gap: 12px;
+                }
+
+                .kottravai-banner .banner-dot {
+                    width: 12px;
+                    height: 12px;
+                    background-color: rgba(255, 255, 255, 0.4);
+                    border-radius: 50%;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                .kottravai-banner .banner-dot:hover {
+                    background-color: rgba(255, 255, 255, 0.7);
+                }
+
+                .kottravai-banner .banner-dot.active {
+                    background-color: #FFFFFF;
+                    transform: scale(1.2);
+                }
+
+                /* Responsive */
+                @media (max-width: 768px) {
+                    .kottravai-banner {
+                        height: auto;
+                        aspect-ratio: 3/2;
+                        max-height: 500px;
                     }
 
-                    return (
+                    .kottravai-banner .banner-bg {
+                        object-fit: contain;
+                        background-color: #f9f9f9;
+                    }
+                }
+            `}</style>
+
+            <section className="kottravai-banner">
+                <div className="banner-container">
+                    {SLIDES.map((slide, index) => (
                         <div
                             key={slide.id}
-                            className={`absolute inset-0 w-full h-full transition-transform duration-700 ease-in-out ${positionClass}`}
+                            className={`banner-slide`}
+                            ref={(el) => (slideRefs.current[index] = el)}
                         >
-                            {/* Background Image - Anchored to TOP to show logo */}
-                            <div className={`absolute inset-0 w-full h-full transform transition-transform duration-[8000ms] ease-out ${isCurrent ? 'scale-105' : 'scale-100'}`}>
+                            <a href={slide.link} className="banner-link">
                                 <img
                                     src={slide.image}
-                                    alt={slide.title}
-                                    className="w-full h-full object-cover object-top"
-                                    loading={index === 0 ? "eager" : "lazy"}
+                                    alt={`Banner ${index + 1}`}
+                                    className="banner-bg"
                                 />
-                            </div>
-
-                            {/* Gradient Overlay - subtle for white bg */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/40"></div>
-
-                            {/* Content Container - Aligned Right with Top Padding/Margin to clear logo */}
-                            <div className="absolute inset-0 flex items-center md:items-start justify-center md:justify-end">
-                                <div className="container mx-auto px-6 md:px-12 flex justify-center md:justify-end">
-                                    <div className={`max-w-xl text-center md:text-right transform transition-all duration-700 delay-300 mt-16 sm:mt-24 md:mt-32 lg:mt-40 ${isCurrent ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-                                        <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-[#2D1B4E] mb-2 md:mb-4 leading-[1.2] md:leading-[1.1] tracking-tight drop-shadow-sm">
-                                            {slide.title}
-                                        </h1>
-                                        <p className="text-sm sm:text-base md:text-xl text-gray-700 mb-6 md:mb-8 font-medium leading-relaxed drop-shadow-sm max-w-sm mx-auto md:max-w-none md:ml-auto">
-                                            {slide.subtitle}
-                                        </p>
-
-                                        <div className="flex flex-wrap gap-4 justify-center md:justify-end">
-                                            <a
-                                                href={slide.link}
-                                                className="px-6 py-2.5 md:px-8 md:py-3 bg-[#b5128f] text-white font-bold rounded-full hover:bg-[#920e73] transition-all transform hover:-translate-y-1 hover:shadow-xl shadow-lg flex items-center justify-center min-w-[120px] md:min-w-[150px] text-sm md:text-base"
-                                            >
-                                                {slide.cta}
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            </a>
                         </div>
-                    );
-                })}
-            </div>
-
-            {/* Navigation Dots - Hide if only 1 slide */}
-            {heroSlides.length > 1 && (
-                <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-30 flex space-x-3">
-                    {heroSlides.map((_, index) => (
-                        <button
-                            key={index}
-                            onClick={() => setCurrent(index)}
-                            className={`transition-all duration-300 rounded-full shadow-lg ${index === current ? 'bg-[#b5128f] w-10 h-3' : 'bg-white/50 w-3 h-3 hover:bg-white'
-                                }`}
-                            aria-label={`Go to slide ${index + 1}`}
-                        />
                     ))}
                 </div>
-            )}
 
-            {/* Navigation Arrows - Hide if only 1 slide */}
-            {heroSlides.length > 1 && (
-                <>
-                    <button
-                        onClick={prevSlide}
-                        className="absolute top-1/2 left-4 md:left-8 z-30 transform -translate-y-1/2 p-3 rounded-full bg-black/20 hover:bg-[#b5128f] text-white backdrop-blur-sm border border-white/10 transition-all shadow-lg hover:shadow-[#b5128f]/50 group hidden md:block"
-                    >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                    </button>
-                    <button
-                        onClick={nextSlide}
-                        className="absolute top-1/2 right-4 md:right-8 z-30 transform -translate-y-1/2 p-3 rounded-full bg-black/20 hover:bg-[#b5128f] text-white backdrop-blur-sm border border-white/10 transition-all shadow-lg hover:shadow-[#b5128f]/50 group hidden md:block"
-                    >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                    </button>
-                </>
-            )}
-        </section>
+                <div className="banner-nav">
+                    {SLIDES.map((_, index) => (
+                        <div
+                            key={index}
+                            className={`banner-dot ${index === currentIndex ? 'active' : ''}`}
+                            onClick={() => handleDotClick(index)}
+                        ></div>
+                    ))}
+                </div>
+            </section>
+        </>
     );
 };
 

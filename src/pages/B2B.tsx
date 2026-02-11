@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import MainLayout from '@/layouts/MainLayout';
 import { BadgeCheck, Heart, Leaf, Users, Gift, Truck, FileText, Send, Building2, UserCheck, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -56,6 +57,10 @@ const B2B = () => {
         }
     };
 
+    const scrollToForm = () => {
+        document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
+    };
+
     return (
         <MainLayout>
             <Helmet>
@@ -76,7 +81,7 @@ const B2B = () => {
             <section className="py-20 bg-white">
                 <div className="container mx-auto px-4">
                     <div className="text-center max-w-3xl mx-auto mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] font-serif mb-4">Why Gift with Kottravai?</h2>
+                        <h2 className="text-3xl md:text-4xl font-black text-[#2D1B4E] mb-4">Why Gift with Kottravai?</h2>
                         <div className="w-20 h-1 bg-[#8E2A8B] mx-auto rounded-full"></div>
                     </div>
 
@@ -103,7 +108,7 @@ const B2B = () => {
             <section className="py-20 bg-[#F8F9FA]">
                 <div className="container mx-auto px-4">
                     <div className="text-center max-w-3xl mx-auto mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] font-serif mb-4">Your Gift Creates Ripple Effects</h2>
+                        <h2 className="text-3xl md:text-4xl font-black text-[#2D1B4E] mb-4">Your Gift Creates Ripple Effects</h2>
                         <p className="text-gray-600">When you choose Kottravai, you start a cycle of positive change.</p>
                     </div>
 
@@ -124,74 +129,78 @@ const B2B = () => {
             </section>
 
             {/* Best Sellers Section */}
-            <section className="py-20 bg-white">
+            <section className="py-24 bg-white">
                 <div className="container mx-auto px-4">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-[#1A1A1A] uppercase tracking-wider mb-2">Best Sellers</h2>
-                        <div className="w-16 h-1 bg-[#8E2A8B] mx-auto"></div>
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl font-black text-[#1a1a1a] uppercase tracking-[0.2em] mb-3">Best Sellers</h2>
+                        <div className="w-12 h-1 bg-[#8E2A8B] mx-auto opacity-30"></div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl mx-auto h-[600px] lg:h-[600px]">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-[1300px] mx-auto">
                         {/* Large Left Card - Coconut Shell */}
-                        <div className="relative group overflow-hidden rounded-2xl h-full shadow-sm hover:shadow-xl transition-all">
+                        <div className="relative group overflow-hidden rounded-[2rem] aspect-square lg:aspect-auto lg:h-[700px] shadow-2xl hover:shadow-[#8E2A8B]/10 transition-all duration-500">
                             <img
-                                src="https://images.unsplash.com/photo-1610450949755-addb2707d838?q=80&w=1000&auto=format&fit=crop"
+                                src="cs.jpg"
                                 alt="Coconut Shell Products"
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 md:p-12">
-                                <h3 className="text-white text-2xl md:text-3xl font-bold mb-6">Coconut Shell Products</h3>
-                                <div className="flex gap-4">
-                                    <button className="bg-[#E5E7EB] text-black px-6 py-2 text-xs md:text-sm font-bold uppercase tracking-wide hover:bg-white transition flex items-center gap-2">
-                                        Shop Now <span className="text-xs">→</span>
-                                    </button>
-                                    <button className="border border-white/50 text-white px-6 py-2 text-xs md:text-sm font-bold uppercase tracking-wide hover:bg-white/20 transition flex items-center gap-2">
-                                        Enquiry <span className="text-xs">→</span>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-10 md:p-14">
+                                <h3 className="text-white text-3xl md:text-4xl font-bold mb-8">Coconut Shell Products</h3>
+                                <div className="flex flex-wrap gap-4">
+                                    <Link to="/category/coco-crafts" className="bg-[#E5E7EB] text-black px-8 py-3.5 text-xs font-black uppercase tracking-[0.15em] hover:bg-white transition-all transform active:scale-95 flex items-center gap-2 rounded-lg">
+                                        Shop Now <span className="text-base">→</span>
+                                    </Link>
+                                    <button
+                                        onClick={scrollToForm}
+                                        className="border-2 border-white/40 text-white px-8 py-3.5 text-xs font-black uppercase tracking-[0.15em] hover:bg-white hover:text-[#8E2A8B] hover:border-white transition-all transform active:scale-95 flex items-center gap-2 rounded-lg backdrop-blur-sm">
+                                        Enquiry <span className="text-base">→</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
                         {/* Right Column Grid */}
-                        <div className="grid grid-rows-2 gap-6 h-full">
+                        <div className="grid grid-rows-2 gap-6">
                             {/* Top Card - Terracotta */}
-                            <div className="relative group overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all h-full">
+                            <div className="relative group overflow-hidden rounded-[2rem] h-[340px] shadow-xl hover:shadow-[#8E2A8B]/10 transition-all duration-500">
                                 <img
-                                    src="https://images.unsplash.com/photo-1605342935028-11261d713c77?q=80&w=1000&auto=format&fit=crop"
+                                    src="teer.jpg"
                                     alt="Terracotta Jewellery"
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-center items-start p-8 md:p-10">
-                                    <div className="mt-auto">
-                                        <h3 className="text-white text-2xl font-bold mb-6">Terracotta</h3>
-                                        <div className="flex gap-4">
-                                            <button className="bg-[#E5E7EB] text-black px-5 py-2 text-xs font-bold uppercase tracking-wide hover:bg-white transition flex items-center gap-2">
-                                                Shop Now <span className="text-xs">→</span>
-                                            </button>
-                                            <button className="border border-white/50 text-white px-5 py-2 text-xs font-bold uppercase tracking-wide hover:bg-white/20 transition flex items-center gap-2">
-                                                Enquiry <span className="text-xs">→</span>
-                                            </button>
-                                        </div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 md:p-10">
+                                    <h3 className="text-white text-2xl font-bold mb-6">Terracotta</h3>
+                                    <div className="flex flex-wrap gap-3">
+                                        <Link to="/category/terracotta-ornaments" className="bg-[#E5E7EB] text-black px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-white transition-all transform active:scale-95 flex items-center gap-2 rounded-lg">
+                                            Shop Now <span>→</span>
+                                        </Link>
+                                        <button
+                                            onClick={scrollToForm}
+                                            className="border-2 border-white/40 text-white px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-white hover:text-[#8E2A8B] hover:border-white transition-all transform active:scale-95 flex items-center gap-2 rounded-lg backdrop-blur-sm">
+                                            Enquiry <span>→</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Bottom Row */}
-                            <div className="grid grid-cols-2 gap-6 h-full">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 {/* Bottom Left - Crochet */}
-                                <div className="relative group overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all h-full">
+                                <div className="relative group overflow-hidden rounded-[2rem] h-[334px] shadow-xl hover:shadow-[#8E2A8B]/10 transition-all duration-500">
                                     <img
-                                        src="https://images.unsplash.com/photo-1616699002805-4762ae3496f8?q=80&w=1000&auto=format&fit=crop"
-                                        alt="Crochet"
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                        src="unnamed.jpg"
+                                        alt="Heritage Mixes"
+                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6">
-                                        <h3 className="text-white text-xl font-bold mb-4">Crochet</h3>
-                                        <div className="flex flex-col xl:flex-row gap-3">
-                                            <button className="bg-[#E5E7EB] text-black px-4 py-2 text-[10px] font-bold uppercase tracking-wide hover:bg-white transition flex items-center justify-center gap-1 w-full xl:w-auto">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-8">
+                                        <h3 className="text-white text-xl font-bold mb-6">Heritage Mixes</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Link to="/category/heritage-mixes" className="bg-[#E5E7EB] text-black px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] hover:bg-white transition-all transform active:scale-95 flex items-center justify-center gap-1 flex-1 sm:flex-initial rounded-md">
                                                 Shop Now <span>→</span>
-                                            </button>
-                                            <button className="border border-white/50 text-white px-4 py-2 text-[10px] font-bold uppercase tracking-wide hover:bg-white/20 transition flex items-center justify-center gap-1 w-full xl:w-auto">
+                                            </Link>
+                                            <button
+                                                onClick={scrollToForm}
+                                                className="border border-white/40 text-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] hover:bg-white hover:text-[#8E2A8B] hover:border-white transition-all transform active:scale-95 flex items-center justify-center gap-1 flex-1 sm:flex-initial rounded-md backdrop-blur-sm">
                                                 Enquiry <span>→</span>
                                             </button>
                                         </div>
@@ -199,19 +208,21 @@ const B2B = () => {
                                 </div>
 
                                 {/* Bottom Right - Healthy Mixes */}
-                                <div className="relative group overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all h-full">
+                                <div className="relative group overflow-hidden rounded-[2rem] h-[334px] shadow-xl hover:shadow-[#8E2A8B]/10 transition-all duration-500">
                                     <img
-                                        src="https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1000&auto=format&fit=crop"
+                                        src="hm.jpg"
                                         alt="Healthy Mixes"
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6">
-                                        <h3 className="text-white text-xl font-bold mb-4">Healthy Mixes</h3>
-                                        <div className="flex flex-col xl:flex-row gap-3">
-                                            <button className="bg-[#E5E7EB] text-black px-4 py-2 text-[10px] font-bold uppercase tracking-wide hover:bg-white transition flex items-center justify-center gap-1 w-full xl:w-auto">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-8">
+                                        <h3 className="text-white text-xl font-bold mb-6">Healthy Mixes</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Link to="/category/instant-nourish" className="bg-[#E5E7EB] text-black px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] hover:bg-white transition-all transform active:scale-95 flex items-center justify-center gap-1 flex-1 sm:flex-initial rounded-md">
                                                 Shop Now <span>→</span>
-                                            </button>
-                                            <button className="border border-white/50 text-white px-4 py-2 text-[10px] font-bold uppercase tracking-wide hover:bg-white/20 transition flex items-center justify-center gap-1 w-full xl:w-auto">
+                                            </Link>
+                                            <button
+                                                onClick={scrollToForm}
+                                                className="border border-white/40 text-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] hover:bg-white hover:text-[#8E2A8B] hover:border-white transition-all transform active:scale-95 flex items-center justify-center gap-1 flex-1 sm:flex-initial rounded-md backdrop-blur-sm">
                                                 Enquiry <span>→</span>
                                             </button>
                                         </div>
@@ -222,8 +233,6 @@ const B2B = () => {
                     </div>
                 </div>
             </section>
-
-
 
             {/* "How We Work" Flow Section */}
             <section className="py-24 bg-white overflow-hidden relative font-sans">
@@ -322,15 +331,15 @@ const B2B = () => {
             <section className="py-20 bg-white">
                 <div className="container mx-auto px-4">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] font-serif mb-4">Curated Offerings</h2>
+                        <h2 className="text-3xl md:text-4xl font-black text-[#2D1B4E] mb-4">Curated Offerings</h2>
                         <p className="text-gray-600">Diverse options for every budget and occasion.</p>
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
                         {[
-                            { title: "Artisan Heritage Hampers", desc: "Terracotta, palm crafts, brass décor and handwoven textiles." },
+                            { title: "Artisan Heritage Collections", desc: "Terracotta, palm crafts, brass décor and handwoven textiles." },
                             { title: "Wellness & Care Packs", desc: "Herbal soaps, natural foods, handcrafted accessories." },
                             { title: "Desk & Workspace Gifts", desc: "Minimalist décor, handcrafted stationery, utility crafts." },
-                            { title: "Festival & Milestone Hampers", desc: "Custom festive gifting with regional specialties." },
+                            { title: "Festival & Milestone Gifts", desc: "Custom festive gifting with regional specialties." },
                             { title: "Custom Co-Branded Gifts", desc: "Personalised packaging with brand story inserts." },
                             { title: "Employee Onboarding Kits", desc: "Welcome new team members with sustainable essentials." }
                         ].map((item, idx) => (
@@ -344,19 +353,18 @@ const B2B = () => {
                 </div>
             </section>
 
-
             {/* Process Section */}
             <section className="py-20 bg-gray-50">
                 <div className="container mx-auto px-4">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] font-serif mb-4">How We Work</h2>
+                        <h2 className="text-3xl md:text-4xl font-black text-[#2D1B4E] mb-4">How We Work</h2>
                         <p className="text-gray-600">A seamless process from inquiry to delivery.</p>
                     </div>
 
                     <div className="grid md:grid-cols-5 gap-4 max-w-6xl mx-auto">
                         {[
                             { icon: Users, step: "01", title: "Connect", desc: "Share your requirements & budget." },
-                            { icon: Gift, step: "02", title: "Curate", desc: "Build a custom hamper theme." },
+                            { icon: Gift, step: "02", title: "Curate", desc: "Build a custom gift theme." },
                             { icon: FileText, step: "03", title: "Branding", desc: "Add logo & personal notes." },
                             { icon: Truck, step: "04", title: "Delivery", desc: "We handle logistics & shipping." },
                             { icon: Heart, step: "05", title: "Report", desc: "Receive an impact report." }
@@ -379,7 +387,7 @@ const B2B = () => {
             {/* Audience Section */}
             <section className="py-20 bg-white border-b">
                 <div className="container mx-auto px-4 max-w-4xl text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] font-serif mb-12">For Companies That Value People</h2>
+                    <h2 className="text-3xl md:text-4xl font-black text-[#2D1B4E] mb-12">For Companies That Value People</h2>
                     <div className="grid md:grid-cols-2 gap-8 text-left">
                         <div className="flex gap-4">
                             <div className="mt-1"><Building2 className="text-[#8E2A8B]" size={24} /></div>
@@ -418,7 +426,7 @@ const B2B = () => {
             <section className="py-20 bg-gradient-to-b from-white to-[#FDFBF7] overflow-hidden">
                 <div className="container mx-auto px-4">
                     <div className="text-center mb-10">
-                        <h2 className="text-3xl md:text-5xl font-bold text-[#2D1B4E] font-serif mb-4">Our Corporate Collections</h2>
+                        <h2 className="text-3xl md:text-5xl font-black text-[#2D1B4E] mb-4">Our Corporate Collections</h2>
                         <p className="text-gray-600 max-w-2xl mx-auto text-lg leading-relaxed">
                             Thoughtfully curated corporate gift collections that celebrate craftsmanship, wellbeing, culture, and meaningful connections.
                         </p>
@@ -507,7 +515,7 @@ const B2B = () => {
             <section className="py-20 bg-white">
                 <div className="container mx-auto px-4">
                     <div className="text-center max-w-3xl mx-auto mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] font-serif mb-4">Loved by Our Community</h2>
+                        <h2 className="text-3xl md:text-4xl font-black text-[#2D1B4E] mb-4">Loved by Our Community</h2>
                         <p className="text-gray-600 text-lg">What customers say about our craftsmanship and impact.</p>
                     </div>
 
@@ -539,7 +547,7 @@ const B2B = () => {
                     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
                         <div className="md:w-1/3 bg-[#2D1B4E] text-white p-10 flex flex-col justify-between">
                             <div>
-                                <h3 className="text-2xl font-bold font-serif mb-4">Partner With Us</h3>
+                                <h3 className="text-2xl font-bold mb-4">Partner With Us</h3>
                                 <p className="text-white/80 mb-8 leading-relaxed">Let's create something meaningful together. Fill out the form and our team will reach out within 24 hours.</p>
                             </div>
                             <div className="space-y-4 text-sm text-white/70">

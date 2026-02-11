@@ -8,7 +8,7 @@ const GiftHampers = () => {
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12">
                     <div>
                         <span className="text-primary font-bold uppercase tracking-wider text-sm">Special Collections</span>
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2 font-serif">Curated Gift Hampers</h2>
+                        <h2 className="text-3xl md:text-4xl font-black text-gray-900 mt-2">Curated Gift Hampers</h2>
                     </div>
                     <Link to="/category/gift-hampers" className="hidden md:inline-flex items-center text-primary font-semibold hover:underline mt-4 md:mt-0">
                         View All Collections &rarr;

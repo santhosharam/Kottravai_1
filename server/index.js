@@ -1,9 +1,12 @@
 const express = require('express'); // Restart Triggered [Auth Update]
 const cors = require('cors');
+const path = require('path');
 const db = require('./db');
 const nodemailer = require('nodemailer');
 const { verifyConnection } = require('./utils/mailer');
 const { createClient } = require('@supabase/supabase-js');
+const NodeCache = require('node-cache');
+const compression = require('compression');
 require('dotenv').config();
 
 // Import Shiprocket Service for automatic shipment creation
@@ -18,20 +21,21 @@ verifyConnection().then(isConnected => {
     }
 });
 
-// --- Performance Cache ---
-let productCache = null;
-let lastCacheUpdate = 0;
-const CACHE_DURATION = 60 * 1000; // 1 minute cache
+// --- Performance Cache (Powered by node-cache) ---
+const productCache = new NodeCache({ stdTTL: 3600, checkperiod: 600 }); // 1 hour default TTL
 
 const clearProductCache = () => {
-    productCache = null;
-    lastCacheUpdate = 0;
+    productCache.del("all_products");
     console.log('🧹 Product cache cleared');
 };
 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+app.use(compression()); // Enable GZIP compression
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Middleware to verify JWT
 // Initialize Supabase client
@@ -58,12 +62,15 @@ const authenticateToken = async (req, res, next) => {
         const { data: { user }, error } = await supabase.auth.getUser(token);
         if (error || !user) throw error;
 
-        // Attach user info to request (handle both email and phone based users)
+        // Attach user info to request (support both email and legacy phone-based users)
         req.user = {
             id: user.id,
-            username: user.user_metadata?.username || user.phone || user.email || '',
+            email: user.email || '',
+            // Use full email or phone as username to ensure uniqueness for wishlist/cart keys
+            username: user.email || user.phone || user.id,
+            displayUsername: user.user_metadata?.username || user.email?.split('@')[0] || user.phone || '',
             mobile: user.user_metadata?.mobile || user.phone?.replace(/^\+91/, '') || '',
-            fullName: user.user_metadata?.full_name || ''
+            fullName: user.user_metadata?.full_name || user.user_metadata?.username || ''
         };
         next();
     } catch (err) {
@@ -71,9 +78,7 @@ const authenticateToken = async (req, res, next) => {
     }
 };
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
+// Middleware moved after app definition
 app.use(cors({
     origin: true, // Reflect the request origin
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -97,17 +102,24 @@ app.use(cors({
     credentials: true
 }));
 
-// Comprehensive security and dev headers
+// Comprehensive security and dev headers with timing
 app.use((req, res, next) => {
-    // Log every request to help debug 400 errors
+    const start = Date.now();
+
+    // Log every request
     if (req.path !== '/api/health') {
-        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-        if (req.method === 'POST' || req.method === 'PUT') {
-            console.log('Body:', JSON.stringify(req.body, null, 2));
-        }
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Processing...`);
     }
 
-    // Explicitly allow private network access for local tunnels (Chrome/Edge)
+    // Capture response end to log duration
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        if (req.path !== '/api/health') {
+            console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Done in ${duration}ms`);
+        }
+    });
+
+    // Explicitly allow private network access
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
     res.setHeader('Permissions-Policy', 'accelerometer=*, gyroscope=*, magnetometer=*, payment=*');
     next();
@@ -235,48 +247,37 @@ app.get('/api/init-db', async (req, res) => {
 // Products Routes
 app.get('/api/products', async (req, res) => {
     try {
-        const now = Date.now();
-        // Return cached data if it's still fresh
-        if (productCache && (now - lastCacheUpdate < 600000)) { // 10 minutes cache
+        // Return cached data if present
+        const cachedProducts = productCache.get("all_products");
+        if (cachedProducts) {
             console.log('⚡ Serving products from cache');
-            return res.json(productCache);
+            return res.json(cachedProducts);
         }
 
         console.log('🔍 Fetching products from database...');
-        // Optimized query: Subquery for reviews is much faster than LEFT JOIN + GROUP BY for large datasets
         const query = `
-            SELECT p.*, 
-            (
-                SELECT COALESCE(json_agg(r_agg), '[]')
-                FROM (
-                    SELECT 
-                        id, 
-                        product_id as "productId", 
-                        user_name as "userName", 
-                        email, 
-                        rating, 
-                        comment, 
-                        date 
-                    FROM reviews 
-                    WHERE product_id = p.id
-                    ORDER BY date DESC
-                ) r_agg
-            ) as reviews
+            SELECT p.*
             FROM products p
             ORDER BY p.created_at DESC
         `;
-
+        console.time('DB_FETCH_PRODUCTS');
         const result = await db.query(query);
+        console.timeEnd('DB_FETCH_PRODUCTS');
 
         // Update Cache
-        productCache = result.rows;
-        lastCacheUpdate = now;
+        productCache.set("all_products", result.rows);
 
         res.json(result.rows);
     } catch (err) {
         console.error('❌ Products Fetch Error:', err);
         res.status(500).json({ error: err.message });
     }
+});
+
+// Emergency Cache Reset Route
+app.get('/api/cache-reset', (req, res) => {
+    clearProductCache();
+    res.json({ message: 'Performance cache has been reset' });
 });
 
 app.get('/api/products/:slug', async (req, res) => {
@@ -639,14 +640,25 @@ app.get('/api/orders', async (req, res) => {
 
         // Standard User Access (Requires Token)
         authenticateToken(req, res, async () => {
-            const mobile = req.user.mobile;
-            if (!mobile) return res.json([]);
+            // Use email for new users, fallback to mobile for legacy users
+            const userEmail = req.user.email;
+            const userMobile = req.user.mobile;
 
-            const sanitizedPhone = mobile.replace(/\D/g, "").slice(-10);
-            if (!sanitizedPhone || sanitizedPhone.length < 10) return res.json([]);
+            if (!userEmail && !userMobile) return res.json([]);
 
-            const query = 'SELECT * FROM orders WHERE customer_phone LIKE $1 ORDER BY created_at DESC';
-            const params = [`%${sanitizedPhone}`];
+            let query, params;
+
+            if (userEmail) {
+                // Email-based user: filter by email
+                query = 'SELECT * FROM orders WHERE LOWER(customer_email) = LOWER($1) ORDER BY created_at DESC';
+                params = [userEmail];
+            } else {
+                // Legacy phone-based user: filter by phone
+                const sanitizedPhone = userMobile.replace(/\D/g, "").slice(-10);
+                if (!sanitizedPhone || sanitizedPhone.length < 10) return res.json([]);
+                query = 'SELECT * FROM orders WHERE customer_phone LIKE $1 ORDER BY created_at DESC';
+                params = [`%${sanitizedPhone}`];
+            }
 
             const result = await db.query(query, params);
             res.json(result.rows.map(row => ({
@@ -807,8 +819,43 @@ app.post('/api/b2b-inquiry', async (req, res) => {
 app.post('/api/custom-request', async (req, res) => {
     try {
         const { name, email, phone, requestedText, referenceImage, customFields, productName, allFields } = req.body;
-
         const adminEmail = 'admin@kottravai.in';
+
+        // Prepare Attachments
+        const attachments = [];
+        let imageHtml = '';
+
+        if (referenceImage && referenceImage.startsWith('data:')) {
+            const matches = referenceImage.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+                const type = matches[1]; // e.g., image/png
+                const data = matches[2];
+                const extension = type.split('/')[1];
+
+                attachments.push({
+                    filename: `reference-image.${extension}`,
+                    content: Buffer.from(data, 'base64')
+                });
+
+                // For HTML embedding (optional, but good for preview)
+                imageHtml = `
+                <div style="margin-top: 20px;">
+                    <strong style="color: #2D1B4E;">Reference Image (Attached):</strong>
+                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                        Image has been attached to this email.
+                    </div>
+                </div>`;
+            }
+        } else if (referenceImage) {
+            // Fallback for URL links
+            imageHtml = `
+                <div style="margin-top: 20px;">
+                    <strong style="color: #2D1B4E;">Reference Image:</strong>
+                    <div style="margin-top: 10px;">
+                        <img src="${referenceImage}" alt="Reference" style="max-width: 100%; border-radius: 8px;" />
+                    </div>
+                </div>`;
+        }
 
 
         // Construct dynamic fields HTML
@@ -822,23 +869,30 @@ app.post('/api/custom-request', async (req, res) => {
             `).join('');
         }
 
-        const htmlContent = `
+        const adminHtmlContent = `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
                 <h2 style="color: #2D1B4E; border-bottom: 2px solid #8E2A8B; padding-bottom: 10px;">Customization Inquiry</h2>
-                <p>You received a new customization request for <strong>${productName}</strong>.</p>
+                <div style="background: #f0fdf4; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
+                    <strong>Product:</strong> ${productName}
+                </div>
                 
-                <div style="margin-top: 20px;">
-                    ${fieldsHtml}
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #8E2A8B; margin-bottom: 10px;">Customer Details</h3>
+                    <p><strong>Name:</strong> ${name}</p>
+                    <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
+                    <p><strong>Phone:</strong> ${phone}</p>
                 </div>
 
-                ${referenceImage ? `
-                <div style="margin-top: 20px;">
-                    <strong style="color: #2D1B4E;">Reference Image:</strong>
-                    <div style="margin-top: 10px;">
-                        <img src="${referenceImage}" alt="Reference" style="max-width: 100%; border-radius: 8px; border: 1px solid #eee;" />
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #8E2A8B; margin-bottom: 10px;">Request Details</h3>
+                    ${fieldsHtml}
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                        <strong style="color: #2D1B4E;">Additional Message:</strong>
+                        <div style="margin-top: 5px; color: #555;">${requestedText || 'N/A'}</div>
                     </div>
                 </div>
-                ` : ''}
+
+                ${imageHtml}
 
                 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #888;">
                     This inquiry was sent from the Kottravai Product Details page.
@@ -846,10 +900,41 @@ app.post('/api/custom-request', async (req, res) => {
             </div>
         `;
 
+        const customerHtmlContent = `
+             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h2 style="color: #2D1B4E;">We Received Your Request</h2>
+                </div>
+                <p>Hi ${name},</p>
+                <p>Thank you for your interest in <strong>${productName}</strong>.</p>
+                <p>We have received your customization details and our team will review them shortly. We will get back to you with a quote and timeline within 24-48 hours.</p>
+                
+                <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 5px;">
+                    <strong>Your Request Summary:</strong>
+                    <ul style="color: #555; padding-left: 20px;">
+                        <li><strong>Product:</strong> ${productName}</li>
+                        <li><strong>Phone:</strong> ${phone}</li>
+                    </ul>
+                </div>
+
+                <p style="margin-top: 30px;">Best Regards,<br/>Team Kottravai</p>
+            </div>
+        `;
+
+        // Send Email to Admin
         await sendEmail({
             to: adminEmail,
-            subject: `New Customization Request: ${productName}`,
-            html: htmlContent,
+            subject: `New Customization Request: ${productName} - ${name}`,
+            html: adminHtmlContent,
+            type: 'custom',
+            attachments: attachments
+        });
+
+        // Send Confirmation to Customer
+        await sendEmail({
+            to: email,
+            subject: `Request Received: ${productName}`,
+            html: customerHtmlContent,
             type: 'custom'
         });
 
@@ -935,53 +1020,229 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     }
 });
 
+// --- Email OTP Verification Routes ---
+// Email-based authentication with OTP sent to user's email
+
+app.post('/api/auth/send-email-otp', async (req, res) => {
+    try {
+        const { email, type = 'signup' } = req.body;
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailRegex.test(email)) {
+            return res.status(400).json({ message: 'Invalid email address' });
+        }
+
+        // If type is forgot, check if user exists
+        if (type === 'forgot') {
+            const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+            if (listError) throw listError;
+
+            const userExists = users.some(u => u.email?.toLowerCase() === email.toLowerCase());
+            if (!userExists) {
+                return res.status(404).json({ message: 'No account found with this email address' });
+            }
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Store OTP in database
+        await db.query(
+            'INSERT INTO email_otps (email, otp, expires_at) VALUES ($1, $2, $3)',
+            [email.toLowerCase(), otp, expiresAt]
+        );
+
+        // Send OTP via email
+        const otpEmailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+                <div style="background-color: #ffffff; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #2D1B4E; margin: 0; font-size: 28px;">Kottravai</h1>
+                        <p style="color: #666; margin-top: 10px;">${type === 'forgot' ? 'Password Reset Verification' : 'Email Verification'}</p>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #b5128f 0%, #8E2A8B 100%); border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+                        <p style="color: white; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
+                        <h2 style="color: white; margin: 0; font-size: 36px; letter-spacing: 8px; font-weight: bold;">${otp}</h2>
+                    </div>
+                    
+                    <div style="margin: 25px 0; padding: 20px; background-color: #f0fdf4; border-left: 4px solid #10b981; border-radius: 4px;">
+                        <p style="margin: 0; color: #065f46; font-size: 14px;">
+                            <strong>⏱️ This code expires in 10 minutes</strong>
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #065f46; font-size: 13px;">
+                            Enter this code to ${type === 'forgot' ? 'reset your password' : 'complete your registration'}.
+                        </p>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <p style="color: #999; font-size: 12px; margin: 0;">
+                            If you didn't request this code, please ignore this email.
+                        </p>
+                        <p style="color: #999; font-size: 12px; margin: 10px 0 0 0;">
+                            © ${new Date().getFullYear()} Kottravai. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        await sendEmail({
+            to: email,
+            subject: `${type === 'forgot' ? 'Reset Your Password' : 'Your Verification Code'}: ${otp}`,
+            html: otpEmailHtml,
+            type: 'contact'
+        });
+
+        console.log(`\n📧 [EMAIL OTP SENT] To: ${email} | Type: ${type} | Code: ${otp}\n`);
+        res.json({ message: 'OTP sent to your email' });
+    } catch (err) {
+        console.error('Send Email OTP Error:', err);
+        res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+    }
+});
+
+app.post('/api/auth/verify-email-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({ message: 'Email and OTP are required' });
+        }
+
+        const result = await db.query(
+            'SELECT * FROM email_otps WHERE LOWER(email) = LOWER($1) AND otp = $2 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+            [email, otp]
+        );
+
+        if (result.rows.length > 0) {
+            // We DON'T delete here anymore, only verify it exists and is valid.
+            // It will be deleted by the final action (register or reset-password).
+            res.json({ success: true, message: 'Email verified successfully' });
+        } else {
+            res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+        }
+    } catch (err) {
+        console.error('Verify Email OTP Error:', err);
+        res.status(500).json({ error: 'Verification failed. Please try again.' });
+    }
+});
+
+// Reset password with OTP
+app.post('/api/auth/reset-password-with-otp', async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ error: 'Email, OTP, and new password are required' });
+        }
+
+        // 1. Verify OTP first
+        const result = await db.query(
+            'SELECT * FROM email_otps WHERE LOWER(email) = LOWER($1) AND otp = $2 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+            [email, otp]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired OTP' });
+        }
+
+        // 2. Find user in Supabase
+        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+        if (listError) throw listError;
+
+        const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // 3. Update password
+        const { error: updateError } = await supabase.auth.admin.updateUserById(
+            user.id,
+            { password: newPassword }
+        );
+
+        if (updateError) throw updateError;
+
+        // 4. Delete used OTP
+        await db.query('DELETE FROM email_otps WHERE id = $1', [result.rows[0].id]);
+
+        res.json({ success: true, message: 'Password reset successfully' });
+    } catch (err) {
+        console.error('Reset Password Error:', err);
+        res.status(500).json({ error: 'Failed to reset password. Please try again.' });
+    }
+});
+
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { username, password, mobile, fullName } = req.body;
+        const { username, email, password, otp } = req.body;
 
-        // Ensure phone is in E.164 format (+91 for India)
-        const formattedPhone = mobile.startsWith('+') ? mobile : `+91${mobile}`;
+        // Validate inputs
+        if (!username || !email || !password || !otp) {
+            return res.status(400).json({ error: 'Username, email, password, and OTP are required' });
+        }
 
-        // Create user with direct error handling (bypass listUsers pagination issues)
-        // Use a virtual email to bypass "Phone provider disabled" issue in Supabase
-        const virtualEmail = `${formattedPhone.replace('+', '')}@mobile.internal`;
+        // 1. Verify and consume OTP
+        const otpResult = await db.query(
+            'SELECT * FROM email_otps WHERE LOWER(email) = LOWER($1) AND otp = $2 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+            [email, otp]
+        );
 
+        if (otpResult.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired OTP' });
+        }
+
+        // 2. Validate formats
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Invalid email format' });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+        }
+
+        // Create user in Supabase with email
         const { data, error } = await supabase.auth.admin.createUser({
-            email: virtualEmail,
+            email: email.toLowerCase(),
             password,
-            email_confirm: true, // AUTO-CONFIRM
+            email_confirm: true, // AUTO-CONFIRM since we verified via OTP
             user_metadata: {
                 username,
-                mobile,
-                full_name: fullName
+                full_name: username // Can be updated later
             }
         });
 
         if (error) throw error;
-        res.status(201).json({ user: data.user });
+
+        // 3. Delete used OTP
+        await db.query('DELETE FROM email_otps WHERE id = $1', [otpResult.rows[0].id]);
+
+        console.log(`✅ User registered successfully: ${email}`);
+        res.status(201).json({
+            user: data.user,
+            message: 'Registration successful'
+        });
     } catch (err) {
         console.error('Registration Error Details:', err);
         let errorMessage = err.message || 'Registration failed';
 
         // Handle specific Supabase Auth Errors
-        if (err.code === 'phone_exists' || err.status === 422 && err.message?.includes('phone')) {
-            errorMessage = "This mobile number is already registered. Please login instead.";
-        } else if (err.code === 'email_exists' || err.message?.includes('already registered')) {
-            errorMessage = "This username or email is already taken.";
-        }
-
-        // Specific check for Service Role Key issues
-        if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY.includes('anon')) {
-            errorMessage = "Server Error: Service Role Key is incorrect. Please contact administrator (Needs Service Role key, not Anon key).";
+        if (err.code === 'email_exists' || err.message?.includes('already registered') || err.message?.includes('User already registered')) {
+            errorMessage = "This email is already registered. Please login instead.";
+        } else if (err.message?.includes('username')) {
+            errorMessage = "This username is already taken.";
         }
 
         res.status(400).json({ error: errorMessage });
     }
 });
 
-// --- Authentication Routes Removed (Supabase Handles This) ---
-
 // --- End Auth Routes ---
+
 
 // Razorpay Integration
 const Razorpay = require('razorpay');
@@ -1112,6 +1373,15 @@ if (process.env.NODE_ENV !== 'production') {
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_otps_mobile ON otps(mobile);
+            
+            CREATE TABLE IF NOT EXISTS email_otps (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                email VARCHAR(255) NOT NULL,
+                otp VARCHAR(6) NOT NULL,
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_email_otps_email ON email_otps(email);
         `);
             console.log('✅ Migrations completed: Database is up to date');
         } catch (err) {
@@ -1121,6 +1391,22 @@ if (process.env.NODE_ENV !== 'production') {
 
     runMigrations();
 }
+
+
+// --- Static File Serving (For Production) ---
+// Serve static files from the React app dist folder
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+    // Only serve index.html if it's not an API route
+    if (!req.path.startsWith('/api/')) {
+        res.sendFile(path.join(__dirname, '../dist/index.html'));
+    } else {
+        res.status(404).json({ error: 'API route not found' });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

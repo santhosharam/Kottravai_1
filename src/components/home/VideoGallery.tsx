@@ -5,12 +5,12 @@ const VideoGallery = () => {
     const { videos } = useVideos();
 
     return (
-        <section className="py-20 bg-white">
+        <section className="py-10 bg-white">
             <div className="container px-4">
                 {/* Header */}
-                <div className="text-center max-w-3xl mx-auto mb-12">
+                <div className="text-center max-w-3xl mx-auto mb-6">
 
-                    <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] mb-4 font-serif">
+                    <h2 className="text-3xl md:text-4xl font-black text-[#2D1B4E] mb-4">
                         Watch Kottravai in Action
                     </h2>
                     <p className="text-lg text-gray-600">
@@ -45,9 +45,9 @@ const VideoGallery = () => {
                 </div>
 
                 {/* Footer Link */}
-                <div className="text-center mt-12">
+                <div className="text-center mt-6">
                     <a
-                        href="https://www.youtube.com/"
+                        href="https://www.youtube.com/@Kottravai_in"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center px-8 py-3 bg-transparent text-[#8E2A8B] border border-[#8E2A8B] rounded-full font-semibold hover:bg-[#8E2A8B] hover:text-white transition-all duration-300 shadow-sm hover:shadow-lg group"

@@ -5,6 +5,7 @@ import { CheckCircle, Lock, Truck, Store, ChevronDown, ShoppingBag } from 'lucid
 import MainLayout from '@/layouts/MainLayout';
 import { useCart } from '@/context/CartContext';
 import { useOrders } from '@/context/OrderContext';
+import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -17,7 +18,7 @@ const Checkout = () => {
 
     const [formData, setFormData] = useState({
         fullName: user?.fullName || '',
-        email: user?.username?.includes('@') ? user.username : '',
+        email: user?.email || '',
         phone: user?.mobile || '',
         address: '',
         city: '',
@@ -33,7 +34,7 @@ const Checkout = () => {
             setFormData(prev => ({
                 ...prev,
                 fullName: prev.fullName || user.fullName || '',
-                email: prev.email || (user.username?.includes('@') ? user.username : ''),
+                email: prev.email || user.email || '',
                 phone: prev.phone || user.mobile || ''
             }));
         }
@@ -75,7 +76,7 @@ const Checkout = () => {
 
         const RazorpayInstance = (window as any).Razorpay;
         if (!RazorpayInstance) {
-            alert("Razorpay SDK not loaded. Please refresh the page.");
+            toast.error("Razorpay SDK not loaded. Please refresh the page.");
             setIsSubmitting(false);
             return;
         }
@@ -177,7 +178,7 @@ const Checkout = () => {
 
             rzp.on('payment.failed', function (response: any) {
                 console.error("Payment failure:", response.error);
-                alert("Payment Failed: " + response.error.description);
+                toast.error("Payment Failed: " + response.error.description);
                 setIsSubmitting(false);
             });
 
@@ -185,7 +186,7 @@ const Checkout = () => {
 
         } catch (error: any) {
             console.error("Checkout submission error:", error);
-            alert("Error: " + error.message);
+            toast.error("Error: " + error.message);
             setIsSubmitting(false);
         }
     };
@@ -239,7 +240,7 @@ const Checkout = () => {
                             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 mx-auto mb-6 animate-bounce">
                                 <CheckCircle size={40} />
                             </div>
-                            <h1 className="text-3xl font-serif font-bold text-[#2D1B4E] mb-4">Payment Successful!</h1>
+                            <h1 className="text-3xl font-black text-[#2D1B4E] mb-4">Payment Successful!</h1>
                             <p className="text-gray-600 mb-8">
                                 Thank you for your purchase. Your order has been placed successfully and is being processed.
                             </p>

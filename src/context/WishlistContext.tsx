@@ -44,8 +44,47 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
     // Handle initial load and sync
     useEffect(() => {
         if (isAuthenticated && user?.username) {
+            // Check for guest wishlist to merge
+            const guestWishlistStr = localStorage.getItem('kottravai_wishlist');
+            if (guestWishlistStr) {
+                try {
+                    const guestItems = JSON.parse(guestWishlistStr);
+                    if (Array.isArray(guestItems) && guestItems.length > 0) {
+                        // Merge guest items into server wishlist in the background
+                        const mergeAll = async () => {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            const token = session?.access_token;
+
+                            for (const product of guestItems) {
+                                // Add to local state first for instant feedback if not already there
+                                setWishlist(prev => {
+                                    if (prev.some(item => item.id === product.id)) return prev;
+                                    return [...prev, product];
+                                });
+
+                                // Sync to server
+                                try {
+                                    await axios.post(`${API_URL}/wishlist/toggle`, {
+                                        productId: product.id
+                                    }, {
+                                        headers: { Authorization: `Bearer ${token}` }
+                                    });
+                                } catch (e) {
+                                    console.error("Failed to sync guest item", product.id, e);
+                                }
+                            }
+                            localStorage.removeItem('kottravai_wishlist');
+                        };
+                        mergeAll();
+                    } else {
+                        localStorage.removeItem('kottravai_wishlist');
+                    }
+                } catch (e) {
+                    console.error("Failed to merge guest wishlist", e);
+                }
+            }
             fetchWishlist();
-        } else {
+        } else if (!isAuthenticated) {
             // Guest mode: load from localStorage
             const storedWishlist = localStorage.getItem('kottravai_wishlist');
             if (storedWishlist) {

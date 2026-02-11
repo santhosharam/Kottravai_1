@@ -336,7 +336,7 @@ const Shop = () => {
                     {isMobileFiltersOpen && (
                         <div className="lg:hidden fixed inset-0 z-[200] bg-white overflow-y-auto p-6 animate-in slide-in-from-bottom duration-500">
                             <div className="flex justify-between items-center mb-8">
-                                <h3 className="font-serif text-2xl font-bold text-[#2D1B4E]">Filters</h3>
+                                <h3 className="text-2xl font-bold text-[#2D1B4E]">Filters</h3>
                                 <button
                                     onClick={() => setIsMobileFiltersOpen(false)}
                                     className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500"
@@ -427,7 +427,7 @@ const Shop = () => {
                                 <div className="bg-white p-6 rounded-full mb-6 relative shadow-sm">
                                     <ShoppingBag size={48} className="text-[#b5128f] opacity-80" />
                                 </div>
-                                <h2 className="text-3xl font-serif font-bold text-[#2D1B4E] mb-4">Store Launching Soon</h2>
+                                <h2 className="text-3xl font-bold text-[#2D1B4E] mb-4">Store Launching Soon</h2>
                                 <p className="text-gray-600 mb-8 max-w-md">
                                     We are adding products to our inventory. Please check back shortly.
                                 </p>
@@ -448,7 +448,7 @@ const Shop = () => {
                                         )}
                                     </div>
                                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-3 md:p-4 rounded-2xl border border-gray-100 shadow-sm sticky top-0 md:relative z-40">
-                                        <h1 className="text-lg md:text-xl font-serif font-black text-[#2D1B4E] px-2">{pageTitle}</h1>
+                                        <h1 className="text-lg md:text-xl font-black text-[#2D1B4E] px-2">{pageTitle}</h1>
 
                                         <div className="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
                                             {/* Mobile Filter Toggle Button */}
@@ -567,13 +567,15 @@ const Shop = () => {
                                                             {product.category}
                                                         </span>
                                                     </div>
-                                                    <h3 className="text-center font-serif text-base font-bold text-[#2D1B4E] mb-2 leading-tight hover:text-[#b5128f] transition-colors line-clamp-2 min-h-[2.5rem]">
+                                                    <h3 className="text-center text-base font-bold text-[#2D1B4E] mb-2 leading-tight hover:text-[#b5128f] transition-colors line-clamp-2 min-h-[2.5rem]">
                                                         <Link to={`/product/${product.slug}`}>{product.name}</Link>
                                                     </h3>
 
                                                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50 w-full px-1">
                                                         <div className="text-lg font-black text-[#b5128f]">
-                                                            {product.variants && product.variants.length > 0 ? (
+                                                            {product.isCustomRequest ? (
+                                                                <span className="text-[10px] uppercase tracking-widest text-[#8E2A8B]">Price on Request</span>
+                                                            ) : product.variants && product.variants.length > 0 ? (
                                                                 <span className="flex flex-col">
                                                                     <span className="text-[10px] uppercase tracking-tighter opacity-70">Starting From</span>
                                                                     <span>₹{Math.min(...product.variants.map(v => v.price)).toLocaleString('en-IN')}</span>

@@ -1,3 +1,4 @@
+
 // Review Interface
 export interface Review {
     id: string;
@@ -86,6 +87,68 @@ export const products: Product[] = [
             'https://images.unsplash.com/photo-1614737662709-64eb772d1742?auto=format&fit=crop&q=80&w=800'
         ],
         reviews: []
+    },
+    {
+        id: '2',
+        name: 'Custom Terracotta Planter',
+        price: 0,
+        category: 'Terracotta Ornaments',
+        categorySlug: 'terracotta-ornaments',
+        image: 'https://images.unsplash.com/photo-1459156212016-c812468e2115?auto=format&fit=crop&q=80&w=800',
+        slug: 'custom-terracotta-planter',
+        shortDescription: 'Designed by you, crafted by us. Create a unique terracotta piece for your home.',
+        description: 'Have a specific design in mind? Our skilled artisans can bring your vision to life. Whether it is a specific size, shape, or pattern, submit your request and we will craft a custom terracotta masterpiece just for you.',
+        keyFeatures: [
+            'Fully customizable dimensions and designs',
+            'Hand-molded by master potters',
+            'Natural, breathable terracotta clay',
+            'Weather-resistant for indoor or outdoor use'
+        ],
+        features: [
+            'Material: Natural Clay',
+            'Turnaround Time: 2-3 Weeks',
+            'Minimum Order: 1 Unit'
+        ],
+        images: [],
+        reviews: [],
+        isCustomRequest: true,
+        defaultFormFields: [
+            { id: 'name', label: 'Your Name', required: true, type: 'text', isDefault: true },
+            { id: 'phone', label: 'Phone Number', required: true, type: 'tel', isDefault: true },
+            { id: 'email', label: 'Email Address', required: true, type: 'email', isDefault: true },
+        ],
+        customFormConfig: [
+            { id: 'dimensions', label: 'Approximate Dimensions (H x W)', type: 'text', placeholder: 'e.g. 12in x 8in' },
+            { id: 'quantity', label: 'Quantity Needed', type: 'number', placeholder: '1' }
+        ]
+    },
+    {
+        id: '3',
+        name: 'Poondu Idli Podi',
+        price: 100,
+        category: 'Daily Idly Mix',
+        categorySlug: 'daily-idly-mix',
+        image: 'https://images.unsplash.com/photo-1589301760557-01e304b281f9?auto=format&fit=crop&q=80&w=800',
+        slug: 'poondu-idli-podi',
+        shortDescription: 'Flavorful Poondu (garlic) idli podi available in 50g & 100g packs for a spicy and traditional South Indian side dish.',
+        description: 'Our Poondu Idli Podi is a fiery and flavorful spice blend made from roasted lentils, dried red chilies, and generous amounts of garlic. It is the perfect accompaniment to hot fluffy idlis or crispy dosas. Just mix with gingelly oil or ghee and enjoy the authentic taste of South India.',
+        keyFeatures: [
+            'Authentic Homemade Recipe',
+            'Rich Garlic Flavor',
+            'No Artificial Preservatives',
+            'Freshly Ground Spices'
+        ],
+        features: [
+            'Ingredients: Urad Dal, Chana Dal, Red Chilies, Garlic, Salt, Curry Leaves',
+            'Shelf Life: 6 Months',
+            'Storage: Air-tight container'
+        ],
+        images: [],
+        variants: [
+            { weight: '50', price: 100 },
+            { weight: '100', price: 200 }
+        ],
+        reviews: []
     }
 ];
 
@@ -95,7 +158,6 @@ export const categories = [
     { name: 'Heritage Mixes', count: 0, slug: 'heritage-mixes' },
     { name: 'Instant Nourish', count: 0, slug: 'instant-nourish' },
     { name: 'Essential Care', count: 0, slug: 'essential-care' },
-    { name: 'Gift Hampers', count: 0, slug: 'gift-hampers' },
     { name: 'Signature Kits', count: 0, slug: 'signature-kits' },
 
     // --- Sub Categories: Handicrafts ---
@@ -107,28 +169,5 @@ export const categories = [
     // --- Sub Categories: Heritage Mixes ---
     { name: 'Daily Idly Mix', count: 0, slug: 'daily-idly-mix', parent: 'heritage-mixes' },
     { name: 'Tasty Dosa Mix', count: 0, slug: 'tasty-dosa-mix', parent: 'heritage-mixes' },
-    { name: 'Wholesome Rice Mix', count: 0, slug: 'wholesome-rice-mix', parent: 'heritage-mixes' },
-
-    // --- Sub Categories: Instant Nourish ---
-    { name: 'Shakthimaan', count: 0, slug: 'shakthimaan', parent: 'instant-nourish' },
-    { name: 'Crawl Booster', count: 0, slug: 'crawl-booster', parent: 'instant-nourish' },
-    { name: 'Choco Blast', count: 0, slug: 'choco-blast', parent: 'instant-nourish' },
-
-    // --- Sub Categories: Essential Care ---
-    { name: 'Heal Soap', count: 0, slug: 'heal-soap', parent: 'essential-care' },
-    { name: 'Charcoal Soap', count: 0, slug: 'charcoal-soap', parent: 'essential-care' },
-    { name: 'Skin Glow Soap', count: 0, slug: 'skin-glow-soap', parent: 'essential-care' },
-
-    // --- Sub Categories: Gift Hampers ---
-    { name: 'Executive Desk Gifts Set', count: 0, slug: 'executive-desk-gifts-set', parent: 'gift-hampers' },
-    { name: 'Wellness & Living Set', count: 0, slug: 'wellness-living-set', parent: 'gift-hampers' },
-    { name: 'Heritage & Culture Gift Set', count: 0, slug: 'heritage-culture-gift-set', parent: 'gift-hampers' },
-    { name: 'Festival & Celebration Gift Set', count: 0, slug: 'festival-celebration-gift-set', parent: 'gift-hampers' },
-    { name: 'Hamper of Love', count: 0, slug: 'hamper-of-love', parent: 'gift-hampers' },
-    { name: 'Anniversary Hamper', count: 0, slug: 'anniversary-hamper', parent: 'gift-hampers' },
-
-    // --- Sub Categories: Signature Kits ---
-    { name: 'Happy Journey Kit', count: 0, slug: 'happy-journey-kit', parent: 'signature-kits' },
-    { name: 'Bachelor Kit', count: 0, slug: 'bachelor-kit', parent: 'signature-kits' },
-    { name: 'Working Women Kit', count: 0, slug: 'working-women-kit', parent: 'signature-kits' }
+    { name: 'Wholesome Rice Mix', count: 0, slug: 'wholesome-rice-mix', parent: 'heritage-mixes' }
 ];

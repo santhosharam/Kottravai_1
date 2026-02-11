@@ -1,10 +1,11 @@
 import { ReactNode } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import WhatsAppButton from '@/components/WhatsAppButton';
+import ChatWidget from '@/components/ChatWidget';
 import { useLocation, NavLink } from 'react-router-dom';
 import { Home as HomeIcon, ShoppingBag, ShoppingCart, User } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import FloatingWhatsApp from '@/components/whatsapp/FloatingWhatsApp';
 
 interface MainLayoutProps {
     children: ReactNode;
@@ -24,7 +25,8 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                 {children}
             </main>
             <Footer />
-            <WhatsAppButton />
+            <ChatWidget />
+            <FloatingWhatsApp />
 
             {/* Premium Mobile Bottom Navigation */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 px-6 py-3 z-[100] flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">

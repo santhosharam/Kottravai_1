@@ -42,7 +42,7 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
     const [loading, setLoading] = useState(false);
 
     const fetchOrders = async () => {
-        if (!user?.mobile) return;
+        if (!user?.email) return;
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token;
@@ -68,7 +68,7 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
     };
 
     useEffect(() => {
-        if (isAuthenticated && user?.mobile) {
+        if (isAuthenticated && user?.email) {
             setLoading(true);
 
             // Only fetch what's needed for the current user
@@ -83,7 +83,7 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
             setOrders([]);
             setAdminOrders([]);
         }
-    }, [isAuthenticated, user?.mobile]);
+    }, [isAuthenticated, user?.email]);
 
     const addOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>) => {
         try {

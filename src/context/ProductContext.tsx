@@ -57,13 +57,18 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
             const response = await axios.get(API_URL);
             const mappedProducts = response.data.map(mapProductFromDB);
 
-            // Only update state if data has actually changed to avoid unnecessary re-renders
-            // A simple length check or deep compare could go here, but let's always sync to be safe
-            setProducts(mappedProducts);
+            // High-Performance Check: Avoid full stringify on large payloads (base64 images found)
+            const isDataDifferent = products.length !== mappedProducts.length ||
+                (products.length > 0 && products[0].id !== mappedProducts[0]?.id);
 
-            // Update local storage for next time - use safe helper to handle QuotaExceededError
-            safeSetItem('kottravai_cache_products', JSON.stringify(mappedProducts));
-            safeSetItem('kottravai_cache_time', Date.now().toString());
+            if (isDataDifferent) {
+                setProducts(mappedProducts);
+                // Update local storage in the background to avoid blocking the main thread
+                setTimeout(() => {
+                    safeSetItem('kottravai_cache_products', JSON.stringify(mappedProducts));
+                    safeSetItem('kottravai_cache_time', Date.now().toString());
+                }, 0);
+            }
         } catch (error) {
             console.error("Failed to fetch products from API", error);
         } finally {

@@ -6,9 +6,10 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 interface User {
     id: string;
-    username: string; // This is the email or username used for session identification
-    mobile: string;
+    username: string;
+    email: string;
     fullName: string;
+    mobile?: string;
 }
 
 interface AuthContextType {
@@ -18,10 +19,11 @@ interface AuthContextType {
     isLoginModalOpen: boolean;
     openLoginModal: () => void;
     closeLoginModal: () => void;
-    login: (username: string, password: string) => Promise<{ error: any }>;
-    signUp: (username: string, password: string, mobile: string, fullName: string) => Promise<{ error: any }>;
-    sendOTP: (mobile: string) => Promise<{ error: any }>;
-    verifyOTP: (mobile: string, otp: string) => Promise<{ error: any }>;
+    login: (email: string, password: string) => Promise<{ error: any }>;
+    signUp: (username: string, email: string, password: string, otp: string) => Promise<{ error: any }>;
+    sendEmailOTP: (email: string, type?: 'signup' | 'forgot') => Promise<{ error: any }>;
+    verifyEmailOTP: (email: string, otp: string) => Promise<{ error: any }>;
+    resetPasswordWithOTP: (email: string, otp: string, newPassword: string) => Promise<{ error: any }>;
     logout: () => Promise<void>;
 }
 
@@ -40,12 +42,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 const u = session.user;
-                const isVirtual = u.email?.endsWith('@mobile.internal');
                 setUser({
                     id: u.id,
-                    username: u.user_metadata?.username || u.email?.split('@')[0] || u.phone || '',
-                    mobile: u.user_metadata?.mobile || u.phone?.replace(/^\+91/, '') || (isVirtual ? u.email?.split('@')[0] || '' : ''),
-                    fullName: u.user_metadata?.full_name || ''
+                    username: u.email || u.id, // Use email as unique identifier for cart/wishlist keys
+                    email: u.email || '',
+                    fullName: u.user_metadata?.full_name || u.user_metadata?.username || '',
+                    mobile: u.user_metadata?.mobile || ''
                 });
             }
             setIsLoading(false);
@@ -56,12 +58,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
                 const u = session.user;
-                const isVirtual = u.email?.endsWith('@mobile.internal');
                 setUser({
                     id: u.id,
-                    username: u.user_metadata?.username || u.email?.split('@')[0] || u.phone || '',
-                    mobile: u.user_metadata?.mobile || u.phone?.replace(/^\+91/, '') || (isVirtual ? u.email?.split('@')[0] || '' : ''),
-                    fullName: u.user_metadata?.full_name || ''
+                    username: u.email || u.id, // Use email as unique identifier for cart/wishlist keys
+                    email: u.email || '',
+                    fullName: u.user_metadata?.full_name || u.user_metadata?.username || '',
+                    mobile: u.user_metadata?.mobile || ''
                 });
             } else {
                 setUser(null);
@@ -74,22 +76,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
     }, []);
 
-    const login = async (identifier: string, password: string) => {
+    const login = async (email: string, password: string) => {
         try {
-            // Check if identifier looks like a phone number (10 digits)
-            const isPhone = /^\d{10}$/.test(identifier) || /^\+91\d{10}$/.test(identifier);
-
-            let credentials: any = { password };
-            if (isPhone) {
-                const formattedPhone = identifier.startsWith('+') ? identifier : `+91${identifier}`;
-                // Match the virtual email pattern from the server
-                credentials.email = `${formattedPhone.replace('+', '')}@mobile.internal`;
-            } else {
-                // Fallback for username-based mapping (used if user was registered via username)
-                credentials.email = `${identifier.toLowerCase()}@user.internal`;
-            }
-
-            const { error } = await supabase.auth.signInWithPassword(credentials);
+            const { error } = await supabase.auth.signInWithPassword({
+                email: email.toLowerCase(),
+                password
+            });
 
             if (error) throw error;
             closeLoginModal();
@@ -100,19 +92,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-
-    const signUp = async (username: string, password: string, mobile: string, fullName: string) => {
+    const signUp = async (username: string, email: string, password: string, otp: string) => {
         try {
-            // Call backend instead of directly calling supabase.auth.signUp to bypass email limits
+            // Call backend to create user
             await axios.post(`${API_BASE}/auth/register`, {
                 username,
+                email: email.toLowerCase(),
                 password,
-                mobile,
-                fullName
+                otp
             });
 
-            // Automatically log in after successful signup using the mobile number
-            const { error: loginError } = await login(mobile, password);
+            // Automatically log in after successful signup
+            const { error: loginError } = await login(email, password);
             if (loginError) throw loginError;
 
             return { error: null };
@@ -122,23 +113,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    const sendOTP = async (mobile: string) => {
+    const sendEmailOTP = async (email: string, type: 'signup' | 'forgot' = 'signup') => {
         try {
-            const response = await axios.post(`${API_BASE}/auth/send-otp`, { mobile });
+            const response = await axios.post(`${API_BASE}/auth/send-email-otp`, {
+                email: email.toLowerCase(),
+                type
+            });
             return { error: null, data: response.data };
         } catch (error: any) {
-            console.error('Send OTP error:', error);
+            console.error('Send Email OTP error:', error);
             return { error: error.response?.data || { message: 'Failed to send OTP' } };
         }
     };
 
-    const verifyOTP = async (mobile: string, otp: string) => {
+    const verifyEmailOTP = async (email: string, otp: string) => {
         try {
-            const response = await axios.post(`${API_BASE}/auth/verify-otp`, { mobile, otp });
+            const response = await axios.post(`${API_BASE}/auth/verify-email-otp`, { email: email.toLowerCase(), otp });
             return { error: null, data: response.data };
         } catch (error: any) {
-            console.error('Verify OTP error:', error);
+            console.error('Verify Email OTP error:', error);
             return { error: error.response?.data || { message: 'Invalid OTP' } };
+        }
+    };
+
+    const resetPasswordWithOTP = async (email: string, otp: string, newPassword: string) => {
+        try {
+            const response = await axios.post(`${API_BASE}/auth/reset-password-with-otp`, {
+                email: email.toLowerCase(),
+                otp,
+                newPassword
+            });
+            return { error: null, data: response.data };
+        } catch (error: any) {
+            console.error('Reset password error:', error);
+            return { error: error.response?.data || { message: 'Failed to reset password' } };
         }
     };
 
@@ -157,8 +165,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             closeLoginModal,
             login,
             signUp,
-            sendOTP,
-            verifyOTP,
+            sendEmailOTP,
+            verifyEmailOTP,
+            resetPasswordWithOTP,
             logout
         }}>
             {children}

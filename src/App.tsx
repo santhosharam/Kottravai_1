@@ -16,12 +16,20 @@ import Account from '@/pages/Account';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminLogin from '@/pages/admin/AdminLogin';
 
+import ShippingPolicy from '@/pages/ShippingPolicy';
+import RefundPolicy from '@/pages/RefundPolicy';
+import TermsOfService from '@/pages/TermsOfService';
+import PrivacyPolicy from '@/pages/PrivacyPolicy';
+
 import ScrollToTop from '@/components/ScrollToTop';
+
+import { Toaster } from 'react-hot-toast';
 
 function App() {
     return (
         <>
             <ScrollToTop />
+            <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/shop" element={<Shop />} />
@@ -35,7 +43,10 @@ function App() {
                 <Route path="/faqs" element={<FAQ />} />
                 <Route path="/services" element={<PageViewer slugUri="services" />} />
                 <Route path="/contact" element={<Contact />} />
-                <Route path="/privacy-policy" element={<PageViewer slugUri="privacy-policy" />} />
+                <Route path="/shipping-policy" element={<ShippingPolicy />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/terms-of-service" element={<TermsOfService />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
                 {/* Blog System */}
                 <Route path="/blog" element={<BlogList />} />

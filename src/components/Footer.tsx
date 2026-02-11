@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Linkedin, Youtube, ArrowRight, Twitter, ChevronUp } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Youtube, ArrowRight, ChevronUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const Footer = () => {
@@ -28,7 +28,6 @@ const Footer = () => {
                 {/* Col 1: Brand & Address */}
                 <div className="space-y-6">
                     <Link to="/" className="inline-block">
-                        {/* Logo Text based on screenshot if image not available, or use existing logo with filter */}
                         <div className="text-2xl font-bold tracking-wider">
                             <span className="text-[#d846ef]">kottrav</span>
                             <span className="text-[#a21caf]">ai</span>
@@ -90,10 +89,14 @@ const Footer = () => {
                     {/* Social Icons */}
                     <div className="flex space-x-6">
                         <a href="https://www.facebook.com/profile.php?id=61582600756315" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors"><Facebook size={18} /></a>
-                        <a href="https://www.youtube.com/@Kottravai-vazhai" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors"><Youtube size={18} /></a>
-                        <a href="https://twitter.com/KottravaiVazhai" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors"><Twitter size={18} /></a> {/* Using Twitter icon for X as fallback */}
-                        <a href="https://www.instagram.com/kottravai_vazhai/" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors"><Instagram size={18} /></a>
-                        <a href="https://www.linkedin.com/company/kottravai-vazhai/" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors"><Linkedin size={18} /></a>
+                        <a href="https://www.youtube.com/@Kottravai_in" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors"><Youtube size={18} /></a>
+                        <a href="https://x.com/kottravai_in" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors">
+                            <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                            </svg>
+                        </a>
+                        <a href="https://www.instagram.com/kottravai_in/" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors"><Instagram size={18} /></a>
+                        <a href="https://in.linkedin.com/company/kottravai" className="bg-white rounded-full p-1.5 text-black hover:bg-[#d846ef] hover:text-white transition-colors"><Linkedin size={18} /></a>
                     </div>
                 </div>
             </div>
@@ -107,7 +110,7 @@ const Footer = () => {
             {showScrollTop && (
                 <button
                     onClick={scrollToTop}
-                    className="fixed bottom-24 right-8 w-10 h-10 border border-gray-600 rounded-full flex items-center justify-center hover:bg-[#d846ef] hover:border-[#d846ef] text-white transition-all z-50 bg-black"
+                    className="fixed bottom-[176px] right-8 w-11 h-11 border border-gray-200 rounded-full flex items-center justify-center hover:bg-black hover:border-black text-black hover:text-white transition-all z-50 bg-white shadow-xl"
                     aria-label="Scroll to top"
                 >
                     <ChevronUp size={20} />

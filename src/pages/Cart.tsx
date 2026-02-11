@@ -14,7 +14,7 @@ const Cart = () => {
             </Helmet>
 
             <div className="container mx-auto px-4 py-12">
-                <h1 className="text-3xl font-serif font-bold text-[#2D1B4E] mb-8 text-center md:text-left">Your Cart ({cartCount})</h1>
+                <h1 className="text-3xl font-bold text-[#2D1B4E] mb-8 text-center md:text-left">Your Cart ({cartCount})</h1>
 
                 {cart.length === 0 ? (
                     <div className="text-center py-20 bg-gray-50 rounded-lg border border-gray-100">

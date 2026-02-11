@@ -46,7 +46,7 @@ const Contact = () => {
             <div className="py-20 bg-gray-50">
                 <div className="container mx-auto px-4">
                     <div className="text-center max-w-2xl mx-auto mb-16">
-                        <h1 className="text-4xl font-bold mb-4 font-serif text-[#2D1B4E]">Get in Touch</h1>
+                        <h1 className="text-4xl font-black mb-4 text-[#2D1B4E]">Get in Touch</h1>
                         <p className="text-gray-600">Have a question or want to work together? Fill out the form below and we'll get back to you shortly.</p>
                     </div>
 
