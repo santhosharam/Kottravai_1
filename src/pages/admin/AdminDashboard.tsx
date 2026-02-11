@@ -2083,7 +2083,7 @@ const AdminDashboard = () => {
                                     if (!acc[category]) acc[category] = [];
                                     acc[category].push(product);
                                     return acc;
-                                }, {})).map(([category, items]: [string, any[]]) => (
+                                }, {})).map(([category, items]: [string, any]) => (
                                     <div key={category} className="mb-10 animate-in fade-in duration-700">
                                         <div className="flex items-center gap-3 mb-4 pl-1">
                                             <div className="h-6 w-1 bg-[#25D366] rounded-full"></div>
@@ -2091,7 +2091,7 @@ const AdminDashboard = () => {
                                             <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-md">{items.length} Items</span>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {items.map(product => (
+                                            {items.map((product: any) => (
                                                 <div key={product.id} className="bg-gray-50 rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-all group">
                                                     <div className="flex gap-4 mb-4">
                                                         <div className="relative">
