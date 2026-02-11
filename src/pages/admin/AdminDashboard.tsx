@@ -2097,7 +2097,7 @@ const AdminDashboard = () => {
                                                     <button onClick={() => handleEdit(product)} className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-full transition-colors" title="Edit">
                                                         <Pencil size={18} />
                                                     </button>
-                                                    <button onClick={() => handleDeleteProduct(product.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors" title="Delete">
+                                                    <button onClick={() => deleteProduct(product.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors" title="Delete">
                                                         <Trash2 size={18} />
                                                     </button>
                                                 </div>

@@ -5,6 +5,9 @@ const nodemailer = require('nodemailer');
 const { verifyConnection } = require('./utils/mailer');
 require('dotenv').config();
 
+// Import Shiprocket Service for automatic shipment creation
+const shiprocketService = require('./services/shiprocketService');
+
 // Verify SMTP connection at startup
 verifyConnection().then(isConnected => {
     if (isConnected) {
@@ -513,6 +516,91 @@ app.post('/api/orders', async (req, res) => {
         } catch (emailErr) {
             console.error('❌ Failed to send order confirmation emails:', emailErr);
             // Don't block the response, just log the error
+        }
+
+        // --- SHIPROCKET INTEGRATION ---
+        try {
+            console.log(`🚀 Initiating Shiprocket Order Creation for Order #${orderId}`);
+
+            // STEP 2: Strict phone sanitization for Shiprocket API
+            let sanitizedPhone = row.customer_phone || "9999999999";
+
+            // Remove all non-numeric characters (+91, spaces, dashes, etc.)
+            sanitizedPhone = sanitizedPhone.toString().replace(/\D/g, "");
+
+            // Keep only last 10 digits (removes country code if present)
+            sanitizedPhone = sanitizedPhone.slice(-10);
+
+            // Validate: must be exactly 10 digits
+            if (sanitizedPhone.length !== 10) {
+                console.warn(`⚠️  Invalid phone length (${sanitizedPhone.length}), using fallback`);
+                sanitizedPhone = "9999999999";
+            }
+
+            // Debug log
+            console.log(`📞 Original Phone: ${row.customer_phone}`);
+            console.log(`📦 Shiprocket Phone Used: ${sanitizedPhone}`);
+
+            // Prepare Shiprocket order data
+            const shiprocketOrderData = {
+                orderId: row.order_id,
+                orderDate: new Date().toISOString().split('T')[0],
+
+                customer: {
+                    firstName: row.customer_name.split(' ')[0] || row.customer_name,
+                    lastName: row.customer_name.split(' ').slice(1).join(' ') || '',
+                    email: row.customer_email,
+                    phone: sanitizedPhone, // Use sanitized phone
+                    address: row.address,
+                    city: row.city,
+                    state: 'Tamil Nadu', // Default state, should be collected from frontend
+                    pincode: row.pincode,
+                    country: 'India',
+                },
+
+                items: items.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    sku: item.sku || `SKU-${item.id}`,
+                    quantity: item.quantity,
+                    price: item.price,
+                })),
+
+                payment: {
+                    method: 'prepaid', // All Razorpay orders are prepaid
+                },
+
+                dimensions: {
+                    length: 10,
+                    breadth: 10,
+                    height: 10,
+                    weight: 0.5,
+                },
+            };
+
+            // Create order in Shiprocket
+            console.log('✅ Shiprocket Authenticating...');
+            const shipmentResult = await shiprocketService.createOrder(shiprocketOrderData);
+
+            console.log('📦 Shiprocket Order Created Successfully');
+            console.log(`🆔 Shiprocket Order ID: ${shipmentResult.orderId}`);
+            console.log(`🚚 Shipment ID: ${shipmentResult.shipmentId}`);
+
+            // Update database with Shiprocket details
+            await db.query(
+                `UPDATE orders 
+                 SET shiprocket_order_id = $1, shipment_id = $2 
+                 WHERE id = $3`,
+                [shipmentResult.orderId, shipmentResult.shipmentId, row.id]
+            );
+
+            console.log(`✅ Database updated with Shiprocket details for Order #${orderId}`);
+
+        } catch (shiprocketErr) {
+            console.error('❌ Failed to create Shiprocket order:', shiprocketErr.message);
+            console.error('⚠️  Order saved successfully but shipment creation failed');
+            console.error('⚠️  Manual shipment creation required for Order #' + orderId);
+            // Don't block the response - order is saved, shipment can be created manually
         }
     } catch (err) {
         console.error('Error creating order:', err);
