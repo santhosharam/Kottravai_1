@@ -19,8 +19,8 @@ const Shop = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 12;
 
-    // Default price range 0 - 100000
-    const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
+    // Default price range 50 - 1000
+    const [priceRange, setPriceRange] = useState<[number, number]>([50, 1000]);
     const [sortBy, setSortBy] = useState('default');
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
@@ -153,12 +153,12 @@ const Shop = () => {
                                     <div className="w-1.5 h-6 bg-[#b5128f] rounded-full"></div>
                                     <h3 className="font-bold text-xl text-[#2D1B4E] tracking-tight">Categories</h3>
                                 </div>
-                                {(slug || priceRange[0] !== 0 || priceRange[1] !== 100000 || searchQuery) && (
+                                {(slug || priceRange[0] !== 50 || priceRange[1] !== 1000 || searchQuery) && (
                                     <Link
                                         to="/shop"
                                         className="text-[10px] font-black uppercase tracking-widest text-[#b5128f] hover:underline"
                                         onClick={() => {
-                                            setPriceRange([0, 100000]);
+                                            setPriceRange([50, 1000]);
                                             setExpandedCategory(null);
                                         }}
                                     >
@@ -265,7 +265,7 @@ const Shop = () => {
                                     <div className="relative pt-6 pb-2">
                                         <input
                                             type="range"
-                                            min="0" max="100000"
+                                            min="50" max="1000"
                                             step="100"
                                             value={priceRange[1]}
                                             onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
@@ -301,7 +301,7 @@ const Shop = () => {
 
 
                                     <button
-                                        onClick={() => setPriceRange([0, 100000])}
+                                        onClick={() => setPriceRange([50, 1000])}
                                         className="w-full py-2.5 rounded-xl text-xs font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
                                     >
                                         Reset Filter
@@ -391,14 +391,14 @@ const Shop = () => {
                                 <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#b5128f] mb-6">Price Limit</h4>
                                 <input
                                     type="range"
-                                    min="0" max="100000"
+                                    min="50" max="1000"
                                     step="100"
                                     value={priceRange[1]}
                                     onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
                                     className="w-full accent-[#b5128f] h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer mb-4"
                                 />
                                 <div className="flex justify-between text-sm font-black text-[#2D1B4E]">
-                                    <span>₹0</span>
+                                    <span>₹50</span>
                                     <span className="text-[#b5128f]">₹{priceRange[1]}</span>
                                 </div>
                             </div>
