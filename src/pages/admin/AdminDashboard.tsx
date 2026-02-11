@@ -1,0 +1,2125 @@
+import { useState, useEffect } from 'react';
+import { useProducts } from '@/context/ProductContext';
+import { useVideos } from '@/context/VideoContext';
+import { useNews } from '@/context/NewsContext';
+import { useReviews } from '@/context/ReviewContext';
+import { useOrders } from '../../context/OrderContext';
+import { usePartners } from '@/context/PartnerContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Image as ImageIcon, Trash2, X, Upload, Pencil, MessageSquareQuote, Package, ShoppingBag, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, DollarSign, Handshake, Video, Newspaper, Users, LogOut, Search, Bell, Activity, ArrowUpRight, ArrowDownRight, MoreVertical, Calendar, Clock } from 'lucide-react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
+import { categories } from '@/data/products';
+
+
+const AdminDashboard = () => {
+    const navigate = useNavigate();
+    const { products, addProduct, deleteProduct, updateProduct, updateStock } = useProducts();
+    const { videos, addVideo, deleteVideo, updateVideo } = useVideos();
+    const { newsItems, addNewsItem, deleteNewsItem, updateNewsItem } = useNews();
+    const { addReview, deleteReview, updateReview, getReviewsByPage } = useReviews();
+    const { adminOrders: orders, updateOrderStatus, deleteOrder, fetchAllOrders } = useOrders();
+    const { partners, addPartner, updatePartner, deletePartner } = usePartners();
+
+    const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean | null>(null);
+    const [view, setView] = useState<'dashboard' | 'list' | 'add' | 'videos' | 'news' | 'reviews' | 'stocks' | 'orders' | 'partners' | 'users'>('dashboard');
+
+    // Admin Session Guard
+    useEffect(() => {
+        const isAdmin = sessionStorage.getItem('kottravai_admin_session') === 'true';
+        if (!isAdmin) {
+            navigate('/admin/login');
+        } else {
+            setIsAdminAuthenticated(true);
+            // Fetch all orders specifically for admin use
+            fetchAllOrders();
+        }
+    }, [navigate, fetchAllOrders]);
+
+    const handleLogout = () => {
+        sessionStorage.removeItem('kottravai_admin_session');
+        navigate('/admin/login');
+    };
+
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [editingId, setEditingId] = useState<string | null>(null);
+
+    // Video Form State
+    const [newVideo, setNewVideo] = useState({ title: '', url: '' });
+    const [editingVideoId, setEditingVideoId] = useState<number | null>(null);
+
+    // News Form State
+    const [newsForm, setNewsForm] = useState({ title: '', category: '', date: '', image: '', link: '' });
+    const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
+
+    // Review Form State
+    const [reviewPage, setReviewPage] = useState<'home' | 'b2b'>('home');
+    const [reviewForm, setReviewForm] = useState({ name: '', role: '', content: '', image: '', rating: 5 });
+    const [editingReviewId, setEditingReviewId] = useState<number | null>(null);
+
+    // Partner Form State
+    const [partnerForm, setPartnerForm] = useState({ name: '', logo: '' });
+    const [editingPartnerId, setEditingPartnerId] = useState<number | null>(null);
+
+    // Innovative State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
+
+    const recentActivity = [
+        { id: 1, type: 'order', message: 'New order received from John Doe', time: '5 mins ago', status: 'success' },
+        { id: 2, type: 'stock', message: 'Product "Bento Box" is low on stock', time: '12 mins ago', status: 'warning' },
+        { id: 3, type: 'review', message: 'New 5-star review on "Ceramic Plate"', time: '1 hour ago', status: 'info' },
+        { id: 4, type: 'news', message: 'News article "Safety First" published', time: '3 hours ago', status: 'success' },
+    ];
+
+    const topProducts = products.slice(0, 4).map(p => ({
+        name: p.name,
+        sales: Math.floor(Math.random() * 500) + 100,
+        growth: Math.floor(Math.random() * 20) + 5,
+        image: p.image
+    }));
+
+
+    const filteredReviews = getReviewsByPage(reviewPage);
+
+    // Calculate dynamic stats
+    const totalSales = orders.reduce((sum, order) => sum + order.total, 0);
+    const totalOrders = orders.length;
+
+    // Calculate growth (comparing this month vs last month)
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const thisMonthOrders = orders.filter(o => new Date(o.date) >= thisMonthStart);
+    const lastMonthOrders = orders.filter(o => {
+        const d = new Date(o.date);
+        return d >= lastMonthStart && d < thisMonthStart;
+    });
+
+    const thisMonthSales = thisMonthOrders.reduce((sum, order) => sum + order.total, 0);
+    const lastMonthSales = lastMonthOrders.reduce((sum, order) => sum + order.total, 0);
+
+    const salesGrowth = lastMonthSales === 0 ? (thisMonthSales > 0 ? 12 : 0) : ((thisMonthSales - lastMonthSales) / lastMonthSales) * 100;
+    const ordersGrowth = lastMonthOrders.length === 0 ? (thisMonthOrders.length > 0 ? 5 : 0) : ((thisMonthOrders.length - lastMonthOrders.length) / lastMonthOrders.length) * 100;
+
+    // Extract unique customers from orders
+    const customers = orders.reduce((acc: any[], order) => {
+        const existing = acc.find(c => c.email === order.customerEmail);
+        if (existing) {
+            existing.totalSpent += order.total;
+            existing.orderCount += 1;
+            if (new Date(order.date) > new Date(existing.lastOrder)) {
+                existing.lastOrder = order.date;
+            }
+        } else {
+            acc.push({
+                name: order.customerName,
+                email: order.customerEmail,
+                phone: order.customerPhone,
+                totalSpent: order.total,
+                orderCount: 1,
+                lastOrder: order.date
+            });
+        }
+        return acc;
+    }, []);
+
+
+    // Filter products by category slug
+    const filteredProducts = selectedCategory === 'all'
+        ? products
+        : products.filter(p => p.categorySlug === selectedCategory);
+
+    // Form State
+    const [formData, setFormData] = useState({
+        name: '',
+        price: '',
+        category: categories[0]?.slug || '', // Use slug for value
+        description: '',
+        shortDescription: '',
+        keyFeatures: '',
+        specifications: '',
+
+        reviews: '',
+        isBestSeller: false,
+        isCustomRequest: false,
+        defaultFormFields: [
+            { id: 'name', label: 'Name to Print', placeholder: 'Enter the name exactly as you want', type: 'text' as const, required: true, isDefault: true },
+            { id: 'email', label: 'Email Address', placeholder: 'Enter your email address', type: 'email' as const, required: true, isDefault: true },
+            { id: 'phone', label: 'Phone Number', placeholder: 'Enter your phone number', type: 'tel' as const, required: true, isDefault: true },
+            { id: 'image', label: 'Reference Image', placeholder: 'Upload reference image (optional)', type: 'file' as const, required: false, isDefault: true }
+        ],
+        customFormConfig: [] as { id: string; label: string; type: 'text' | 'textarea' | 'number'; placeholder?: string; required?: boolean }[],
+        variants: [] as { weight: string; price: number; images: string[] }[]
+    });
+
+    const [mainImage, setMainImage] = useState<string>('');
+    const [otherImages, setOtherImages] = useState<string[]>([]);
+
+    // File Handlers
+    const handleMainImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setMainImage(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleNewsImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setNewsForm({ ...newsForm, image: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleOtherImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (files) {
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setOtherImages(prev => [...prev, reader.result as string]);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    };
+
+    const handleEdit = (product: any) => {
+        setEditingId(product.id);
+
+        // Find slug from category name for proper select value
+        const catObj = categories.find(c => c.name === product.category);
+        const catSlug = catObj ? catObj.slug : categories[0].slug;
+
+        setFormData({
+            name: product.name,
+            price: product.price.toString(),
+            category: catSlug,
+            description: product.description || '',
+            shortDescription: product.shortDescription || '', // assuming property exists or optional
+            keyFeatures: product.keyFeatures ? product.keyFeatures.join('\n') : '',
+            specifications: product.features ? product.features.join('\n') : '',
+
+            reviews: '',
+            isBestSeller: product.isBestSeller || false,
+            isCustomRequest: product.isCustomRequest || false,
+            defaultFormFields: product.defaultFormFields || [
+                { id: 'name', label: 'Name to Print', placeholder: 'Enter the name exactly as you want', type: 'text' as const, required: true, isDefault: true },
+                { id: 'email', label: 'Email Address', placeholder: 'Enter your email address', type: 'email' as const, required: true, isDefault: true },
+                { id: 'phone', label: 'Phone Number', placeholder: 'Enter your phone number', type: 'tel' as const, required: true, isDefault: true },
+                { id: 'image', label: 'Reference Image', placeholder: 'Upload reference image (optional)', type: 'file' as const, required: false, isDefault: true }
+            ],
+            customFormConfig: product.customFormConfig || [],
+            variants: product.variants || []
+        });
+        setMainImage(product.image);
+        setOtherImages(product.images || []);
+        setView('add');
+    };
+
+    const resetForm = () => {
+        setFormData({
+            name: '',
+            price: '',
+            category: categories[0]?.slug || '',
+            description: '',
+            shortDescription: '',
+            keyFeatures: '',
+            specifications: '',
+
+            reviews: '',
+            isBestSeller: false,
+            isCustomRequest: false,
+            defaultFormFields: [
+                { id: 'name', label: 'Name to Print', placeholder: 'Enter the name exactly as you want', type: 'text' as const, required: true, isDefault: true },
+                { id: 'email', label: 'Email Address', placeholder: 'Enter your email address', type: 'email' as const, required: true, isDefault: true },
+                { id: 'phone', label: 'Phone Number', placeholder: 'Enter your phone number', type: 'tel' as const, required: true, isDefault: true },
+                { id: 'image', label: 'Reference Image', placeholder: 'Upload reference image (optional)', type: 'file' as const, required: false, isDefault: true }
+            ],
+            customFormConfig: [],
+            variants: []
+        });
+        setMainImage('');
+        setOtherImages([]);
+        setEditingId(null);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // 1. Validation
+        if (!formData.name.trim()) return alert("Product Name is required");
+        if (!formData.isCustomRequest && (!formData.price || isNaN(parseFloat(formData.price)))) return alert("Please enter a valid price");
+        if (!formData.category) return alert("Please select a category");
+        if (!mainImage) return alert("Main Product Image is required");
+
+        // Find category name from slug
+        const categoryObj = categories.find(c => c.slug === formData.category);
+        const categoryName = categoryObj ? categoryObj.name : 'Uncategorized';
+
+        try {
+            // Find existing product to preserve reviews if editing
+            const existingProduct = products.find(p => p.id === editingId);
+            const existingReviews = existingProduct?.reviews || [];
+
+            const productData = {
+                id: editingId || Date.now().toString(),
+                name: formData.name,
+                price: formData.isCustomRequest ? 0 : parseFloat(formData.price),
+                category: categoryName, // Storing name
+                categorySlug: formData.category, // Storing slug for logic
+                slug: formData.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
+                image: mainImage,
+                images: otherImages,
+                shortDescription: formData.shortDescription,
+                description: formData.description,
+                keyFeatures: formData.keyFeatures.split('\n').filter(f => f.trim() !== ''),
+                features: formData.specifications.split('\n').filter(f => f.trim() !== ''),
+                reviews: existingReviews, // Preserve reviews
+                isBestSeller: formData.isBestSeller,
+                isCustomRequest: formData.isCustomRequest,
+                defaultFormFields: formData.defaultFormFields,
+                customFormConfig: formData.customFormConfig,
+                variants: formData.variants
+            };
+
+            if (editingId) {
+                await updateProduct(productData);
+                alert('Product Updated Successfully!');
+            } else {
+                await addProduct(productData);
+                alert('Product Added Successfully!');
+            }
+
+            setView('list');
+            resetForm();
+
+        } catch (error: any) {
+            console.error("Failed to save product:", error);
+            const errorMessage = error.response?.data?.error || error.message || "Unknown error";
+            alert(`Failed to save product: ${errorMessage}`);
+        }
+    }
+
+
+    const handleAddVideo = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newVideo.title || !newVideo.url) return alert("Please fill in both fields");
+
+        // Simple embed conversion if user pastes full URL
+        let embedUrl = newVideo.url;
+        if (newVideo.url.includes('watch?v=')) {
+            embedUrl = newVideo.url.replace('watch?v=', 'embed/');
+        } else if (newVideo.url.includes('youtu.be/')) {
+            embedUrl = newVideo.url.replace('youtu.be/', 'www.youtube.com/embed/');
+        }
+
+        if (editingVideoId) {
+            updateVideo({ id: editingVideoId, title: newVideo.title, url: embedUrl });
+            setEditingVideoId(null);
+            alert("Video updated successfully");
+        } else {
+            addVideo({ title: newVideo.title, url: embedUrl });
+            alert("Video added successfully");
+        }
+
+        setNewVideo({ title: '', url: '' });
+    };
+
+    const handleEditVideo = (video: any) => {
+        setEditingVideoId(video.id);
+        setNewVideo({ title: video.title, url: video.url });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelVideoEdit = () => {
+        setEditingVideoId(null);
+        setNewVideo({ title: '', url: '' });
+    };
+
+    // News Handlers
+    const handleAddNews = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newsForm.title || !newsForm.category || !newsForm.date || !newsForm.link) return alert("Please fill all fields");
+
+        const newsData = { ...newsForm };
+
+        if (editingNewsId) {
+            updateNewsItem({ id: editingNewsId, ...newsData });
+            setEditingNewsId(null);
+            alert("News updated successfully");
+        } else {
+            addNewsItem(newsData);
+            alert("News added successfully");
+        }
+        setNewsForm({ title: '', category: '', date: '', image: '', link: '' });
+    };
+
+    const handleEditNews = (news: any) => {
+        setEditingNewsId(news.id);
+        setNewsForm({
+            title: news.title,
+            category: news.category,
+            date: news.date,
+            image: news.image,
+            link: news.link
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelNewsEdit = () => {
+        setEditingNewsId(null);
+        setNewsForm({ title: '', category: '', date: '', image: '', link: '' });
+    };
+
+    // Review Handlers
+    const handleAddReview = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!reviewForm.name || !reviewForm.content) return alert("All fields are required");
+
+        const reviewData = {
+            ...reviewForm,
+            page: reviewPage
+        };
+
+        if (editingReviewId) {
+            updateReview({ id: editingReviewId, ...reviewData });
+            setEditingReviewId(null);
+            alert("Review updated successfully");
+        } else {
+            addReview(reviewData);
+            alert("Review added successfully");
+        }
+        setReviewForm({ name: '', role: '', content: '', image: '', rating: 5 });
+    };
+
+    const handleEditReview = (review: any) => {
+        setEditingReviewId(review.id);
+        setReviewForm({
+            name: review.name,
+            role: review.role,
+            content: review.content,
+            image: review.image,
+            rating: review.rating || 5
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelReviewEdit = () => {
+        setEditingReviewId(null);
+        setReviewForm({ name: '', role: '', content: '', image: '', rating: 5 });
+    };
+
+    const handleReviewImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setReviewForm({ ...reviewForm, image: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Partner Handlers
+    const handleAddPartner = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!partnerForm.name) return alert("Partner Name is required");
+
+        const partnerData = { ...partnerForm };
+
+        if (editingPartnerId) {
+            updatePartner({ id: editingPartnerId, ...partnerData });
+            setEditingPartnerId(null);
+            alert("Partner updated successfully");
+        } else {
+            addPartner(partnerData);
+            alert("Partner added successfully");
+        }
+        setPartnerForm({ name: '', logo: '' });
+    };
+
+    const handleEditPartner = (partner: any) => {
+        setEditingPartnerId(partner.id);
+        setPartnerForm({
+            name: partner.name,
+            logo: partner.logo || ''
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelPartnerEdit = () => {
+        setEditingPartnerId(null);
+        setPartnerForm({ name: '', logo: '' });
+    };
+
+    const handlePartnerLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPartnerForm({ ...partnerForm, logo: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const removeOtherImage = (index: number) => {
+        setOtherImages(prev => prev.filter((_, i) => i !== index));
+    };
+
+    if (isAdminAuthenticated === null) return null; // Prevent flicker
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex font-sans">
+            {/* Sidebar */}
+            <aside className="w-72 bg-[#2D1B4E] text-white flex-shrink-0 hidden lg:flex flex-col border-r border-white/5 shadow-2xl overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#8E2A8B] via-purple-400 to-[#8E2A8B]"></div>
+
+                <div className="p-8 pb-10">
+                    <div className="flex flex-col items-center">
+                        <div className="relative group cursor-pointer">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-[#8E2A8B] to-purple-600 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                            <img src="/admin-logo.png" alt="Kottravai" className="relative w-48 h-auto object-contain transition-all duration-500 group-hover:scale-105 group-hover:brightness-0 group-hover:invert" />
+                        </div>
+                        <div className="mt-4 flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                            <span className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em]">System Core Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <nav className="flex-1 px-4 space-y-10 overflow-y-auto no-scrollbar pb-10">
+                    {/* Main Section */}
+                    <div className="space-y-2">
+                        <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Central Hub</p>
+                        <button
+                            onClick={() => { setView('dashboard'); resetForm(); setSelectedCategory('all'); }}
+                            className={`w-full text-left px-5 py-3.5 rounded-2xl transition-all duration-300 font-bold flex items-center gap-4 group ${view === 'dashboard' ? 'sidebar-item-active' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                        >
+                            <div className={`p-2 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-white/20' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
+                                <LayoutDashboard size={20} />
+                            </div>
+                            <span className="text-sm">Control Tower</span>
+                        </button>
+                    </div>
+
+                    {/* Management Section */}
+                    <div className="space-y-4">
+                        <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Commerce Lab</p>
+                        <div className="space-y-2">
+                            {[
+                                { view: 'list', icon: Package, label: 'Inventory', active: selectedCategory === 'all' && view === 'list' },
+                                { view: 'stocks', icon: Activity, label: 'Stock Levels', active: view === 'stocks' },
+                                { view: 'orders', icon: ShoppingBag, label: 'Order Streams', active: view === 'orders' },
+                                { view: 'users', icon: Users, label: 'User Insights', active: view === 'users' }
+                            ].map((item, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        if (item.view === 'list') setSelectedCategory('all');
+                                        setView(item.view as any);
+                                        resetForm();
+                                    }}
+                                    className={`w-full text-left px-5 py-3 rounded-2xl transition-all duration-300 font-bold flex items-center justify-between group ${item.active ? 'sidebar-item-active' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-xl transition-colors ${item.active ? 'bg-white/20' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
+                                            <item.icon size={18} />
+                                        </div>
+                                        <span className="text-sm">{item.label}</span>
+                                    </div>
+                                    {item.active && <div className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white]"></div>}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Content Section */}
+                    <div className="space-y-4">
+                        <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Brand Experience</p>
+                        <div className="space-y-2">
+                            {[
+                                { view: 'reviews', icon: MessageSquareQuote, label: 'Feedback' },
+                                { view: 'news', icon: Newspaper, label: 'Newsroom' },
+                                { view: 'videos', icon: Video, label: 'Media Hub' },
+                                { view: 'partners', icon: Handshake, label: 'Alliances' }
+                            ].map((item, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => { setView(item.view as any); resetForm(); }}
+                                    className={`w-full text-left px-5 py-3 rounded-2xl transition-all duration-300 font-bold flex items-center justify-between group ${view === item.view ? 'sidebar-item-active' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-xl transition-colors ${view === item.view ? 'bg-white/20' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
+                                            <item.icon size={18} />
+                                        </div>
+                                        <span className="text-sm">{item.label}</span>
+                                    </div>
+                                    {view === item.view && <div className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white]"></div>}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </nav>
+
+                <div className="p-6 mt-auto">
+                    <div className="bg-gradient-to-br from-[#8E2A8B]/20 to-[#2D1B4E] rounded-2xl p-5 border border-[#8E2A8B]/30 shadow-inner">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-10 w-10 rounded-full bg-[#8E2A8B] flex items-center justify-center font-black text-white shadow-lg">AD</div>
+                            <div>
+                                <p className="text-xs font-black text-white">Super Admin</p>
+                                <p className="text-[10px] text-gray-400">Master Level Access</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-900/50 text-rose-400 text-xs font-black hover:bg-rose-500 hover:text-white transition-all duration-300"
+                        >
+                            <LogOut size={14} />
+                            CORE DISCONNECT
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto bg-gray-50/50">
+                <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-10 py-5 flex justify-between items-center shadow-sm">
+                    <div className="flex items-center gap-8 flex-1">
+                        <h2 className="text-2xl font-black text-[#2D1B4E] whitespace-nowrap admin-gradient-text">
+                            {view === 'dashboard' ? 'Overview' : view === 'videos' ? 'Video Lab' : view === 'news' ? 'Press Hub' : view === 'reviews' ? 'Feedback Lab' : view === 'stocks' ? 'Inventory' : view === 'orders' ? 'Order Stream' : view === 'users' ? 'Monitoring' : view === 'partners' ? 'Alliances' : view === 'add' ? (editingId ? 'Refine Product' : 'Construct Product') : (selectedCategory === 'all' ? 'Inventory Catalog' : categories.find(c => c.slug === selectedCategory)?.name || selectedCategory)}
+                        </h2>
+
+                        {/* Search Bar */}
+                        <div className="hidden md:flex items-center flex-1 max-w-md relative group">
+                            <Search className="absolute left-4 text-gray-400 group-focus-within:text-[#8E2A8B] transition-colors" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search everything..."
+                                className="w-full bg-gray-50 border-none rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:ring-2 focus:ring-[#8E2A8B]/10 transition-all outline-none"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-5">
+                        <div className="flex items-center gap-2 border-r border-gray-100 pr-5">
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="relative p-2.5 rounded-xl bg-gray-50 text-gray-500 hover:bg-[#8E2A8B]/5 hover:text-[#8E2A8B] transition-all group"
+                            >
+                                <Bell size={20} />
+                                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-rose-500 border-2 border-white"></span>
+
+                                {showNotifications && (
+                                    <div className="absolute top-full right-0 mt-4 w-80 glass-card rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-50">
+                                            <h4 className="font-black text-[#2D1B4E] text-xs uppercase tracking-widest">Alerts Flow</h4>
+                                            <span className="text-[10px] text-[#8E2A8B] font-bold">4 New</span>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {recentActivity.slice(0, 3).map(n => (
+                                                <div key={n.id} className="flex gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                                    <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${n.status === 'success' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                                    <p className="text-[11px] font-bold text-gray-600 line-clamp-2">{n.message}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </button>
+                            <Link to="/" className="p-2.5 rounded-xl bg-gray-50 text-gray-500 hover:bg-[#8E2A8B]/5 hover:text-[#8E2A8B] transition-all">
+                                <ImageIcon size={20} />
+                            </Link>
+                        </div>
+
+                        {view === 'list' && (
+                            <button
+                                onClick={() => { resetForm(); setView('add'); }}
+                                className="bg-[#8E2A8B] text-white px-6 py-3 rounded-2xl flex items-center gap-3 hover:bg-[#722270] transition-all hover:shadow-xl hover:shadow-[#8E2A8B]/30 font-black text-sm uppercase tracking-wider"
+                            >
+                                <Plus size={18} />
+                                Deploy Item
+                            </button>
+                        )}
+
+                        <div className="flex items-center gap-3 pl-2">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-sm font-black text-[#2D1B4E]">Admin User</p>
+                                <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Active Access</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#8E2A8B] to-purple-800 p-[1px]">
+                                <div className="h-full w-full rounded-[15px] bg-white p-1">
+                                    <div className="h-full w-full rounded-xl bg-gray-100 flex items-center justify-center text-[#8E2A8B] font-black text-xs uppercase shadow-inner">
+                                        K
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div className="p-8">
+                    {view === 'dashboard' ? (
+                        <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+                            {/* Dashboard Header */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-3xl font-extrabold text-[#2D1B4E]">Intelligence Dashboard</h1>
+                                    <p className="text-gray-500 mt-1">Welcome back, Admin. Here's what's happening today.</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                                        <button
+                                            onClick={() => setActiveTab('overview')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-[#8E2A8B] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        >
+                                            Overview
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('analytics')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-[#8E2A8B] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        >
+                                            Analytics
+                                        </button>
+                                    </div>
+                                    <button className="bg-white p-2.5 rounded-xl shadow-sm border border-gray-100 text-gray-400 hover:text-[#8E2A8B] transition-colors">
+                                        <Calendar size={20} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {activeTab === 'overview' ? (
+                                <>
+                                    {/* Stats Grid - Innovative Look */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        {[
+                                            { label: 'Total Revenue', value: `₹${totalSales.toLocaleString()}`, grow: salesGrowth, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                                            { label: 'Total Orders', value: totalOrders, grow: ordersGrowth, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                            { label: 'Conversion Rate', value: '3.2%', grow: 1.2, icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+                                            { label: 'Avg Order Value', value: `₹${totalOrders > 0 ? (totalSales / totalOrders).toFixed(0) : 0}`, grow: -2.4, icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-50' }
+                                        ].map((stat, i) => (
+                                            <div key={i} className="glass-card stat-card-glow p-6 rounded-2xl group hover:transform hover:-translate-y-1 transition-all duration-300">
+                                                <div className="flex justify-between items-start">
+                                                    <div className={`p-3 ${stat.bg} ${stat.color} rounded-xl transition-transform group-hover:scale-110 duration-300`}>
+                                                        <stat.icon size={24} />
+                                                    </div>
+                                                    <div className={`flex items-center gap-1 text-sm font-bold ${stat.grow >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                        {stat.grow >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                                                        {Math.abs(stat.grow).toFixed(1)}%
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4">
+                                                    <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">{stat.label}</p>
+                                                    <h3 className="text-3xl font-black text-[#2D1B4E] mt-1">{stat.value}</h3>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Main Dashboard Section: Charts & Activity */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        {/* Sales Chart - Large */}
+                                        <div className="lg:col-span-2 glass-card p-8 rounded-2xl">
+                                            <div className="flex justify-between items-center mb-8">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-[#2D1B4E]">Revenue Overview</h3>
+                                                    <p className="text-sm text-gray-500 mt-1">Monthly performance insights</p>
+                                                </div>
+                                                <select className="bg-gray-50 border border-gray-100 text-sm font-bold rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#8E2A8B]/20">
+                                                    <option>Last 7 Months</option>
+                                                    <option>Last Year</option>
+                                                </select>
+                                            </div>
+                                            <div className="h-[350px] w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart
+                                                        data={[
+                                                            { name: 'Jan', sales: 4000, orders: 120 },
+                                                            { name: 'Feb', sales: 3000, orders: 90 },
+                                                            { name: 'Mar', sales: 5000, orders: 150 },
+                                                            { name: 'Apr', sales: 2780, orders: 100 },
+                                                            { name: 'May', sales: 1890, orders: 80 },
+                                                            { name: 'Jun', sales: 2390, orders: 110 },
+                                                            { name: 'Jul', sales: 3490, orders: 130 },
+                                                        ]}
+                                                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                                                    >
+                                                        <defs>
+                                                            <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor="#8E2A8B" stopOpacity={0.1} />
+                                                                <stop offset="95%" stopColor="#8E2A8B" stopOpacity={0} />
+                                                            </linearGradient>
+                                                            <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor="#2D1B4E" stopOpacity={0.1} />
+                                                                <stop offset="95%" stopColor="#2D1B4E" stopOpacity={0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dy={10} />
+                                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} />
+                                                        <Tooltip
+                                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', padding: '12px' }}
+                                                            cursor={{ stroke: '#8E2A8B', strokeWidth: 2, strokeDasharray: '5 5' }}
+                                                        />
+                                                        <Area type="monotone" dataKey="sales" stroke="#8E2A8B" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" />
+                                                        <Area type="monotone" dataKey="orders" stroke="#2D1B4E" strokeWidth={4} fillOpacity={1} fill="url(#colorOrders)" />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+
+                                        {/* Recent Activity Sidebar */}
+                                        <div className="glass-card p-8 rounded-2xl flex flex-col">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h3 className="text-xl font-bold text-[#2D1B4E]">Live Activity</h3>
+                                                <button className="text-[#8E2A8B] p-2 hover:bg-[#8E2A8B]/10 rounded-lg transition-colors">
+                                                    <MoreVertical size={20} />
+                                                </button>
+                                            </div>
+                                            <div className="space-y-6 flex-1">
+                                                {recentActivity.map((activity) => (
+                                                    <div key={activity.id} className="flex gap-4 group">
+                                                        <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${activity.status === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : activity.status === 'warning' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'}`} />
+                                                        <div>
+                                                            <p className="text-sm font-bold text-gray-800 leading-tight group-hover:text-[#8E2A8B] transition-colors cursor-default">{activity.message}</p>
+                                                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                                <Clock size={12} />
+                                                                {activity.time}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <button className="mt-8 w-full py-3 rounded-xl border-2 border-dashed border-gray-100 text-gray-400 font-bold hover:border-[#8E2A8B] hover:text-[#8E2A8B] transition-all">
+                                                View All Logs
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Grid: Top Products & Quick Actions */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                        {/* Top Products */}
+                                        <div className="glass-card p-8 rounded-2xl">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h3 className="text-xl font-bold text-[#2D1B4E]">Top Performing Products</h3>
+                                                <button className="text-sm font-bold text-[#8E2A8B] hover:underline">See Details</button>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {topProducts.map((product, i) => (
+                                                    <div key={i} className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="h-12 w-12 rounded-lg overflow-hidden bg-gray-100">
+                                                                <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-gray-800">{product.name}</p>
+                                                                <p className="text-xs text-gray-400">{product.sales} sales this week</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="font-black text-[#2D1B4E]">₹{(product.sales * 1200).toLocaleString()}</p>
+                                                            <p className="text-xs text-emerald-500 font-bold flex items-center justify-end gap-1">
+                                                                <TrendingUp size={12} />
+                                                                +{product.growth}%
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Quick Actions / Bento Items */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {[
+                                                { title: 'New Product', icon: Plus, desc: 'Add item to store', action: () => setView('add'), color: 'bg-purple-600' },
+                                                { title: 'Check Stocks', icon: Package, desc: '9 items low', action: () => setView('stocks'), color: 'bg-orange-500' },
+                                                { title: 'Manage Orders', icon: ShoppingBag, desc: '4 pending today', action: () => setView('orders'), color: 'bg-blue-600' },
+                                                { title: 'View Reviews', icon: MessageSquareQuote, desc: 'Manage feedback', action: () => setView('reviews'), color: 'bg-pink-600' }
+                                            ].map((action, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={action.action}
+                                                    className="glass-card p-6 rounded-2xl flex flex-col items-center justify-center text-center group hover:shadow-2xl hover:shadow-[#8E2A8B]/10 transition-all duration-300 border-b-4 hover:border-b-[#8E2A8B]"
+                                                >
+                                                    <div className={`p-4 ${action.color} text-white rounded-2xl mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
+                                                        <action.icon size={28} />
+                                                    </div>
+                                                    <h4 className="font-black text-[#2D1B4E] uppercase text-xs tracking-widest">{action.title}</h4>
+                                                    <p className="text-sm text-gray-500 mt-1">{action.desc}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        <div className="lg:col-span-2 glass-card p-8 rounded-3xl">
+                                            <h3 className="text-xl font-black text-[#2D1B4E] mb-6">Regional Sales Trends</h3>
+                                            <div className="h-[300px]">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={[
+                                                        { name: 'North', sales: 4000 },
+                                                        { name: 'South', sales: 7000 },
+                                                        { name: 'East', sales: 2000 },
+                                                        { name: 'West', sales: 5000 },
+                                                        { name: 'Central', sales: 3000 },
+                                                    ]}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                                                        <YAxis axisLine={false} tickLine={false} />
+                                                        <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                                        <Bar dataKey="sales" fill="#8E2A8B" radius={[8, 8, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                        <div className="glass-card p-8 rounded-3xl flex flex-col items-center">
+                                            <h3 className="text-xl font-black text-[#2D1B4E] mb-6 self-start">Category Share</h3>
+                                            <div className="h-[300px] w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={[
+                                                                { name: 'Safety', value: 40 },
+                                                                { name: 'Industrial', value: 30 },
+                                                                { name: 'Custom', value: 20 },
+                                                                { name: 'Other', value: 10 },
+                                                            ]}
+                                                            innerRadius={60}
+                                                            outerRadius={80}
+                                                            paddingAngle={5}
+                                                            dataKey="value"
+                                                        >
+                                                            {[
+                                                                { color: '#8E2A8B' },
+                                                                { color: '#2D1B4E' },
+                                                                { color: '#722270' },
+                                                                { color: '#94A3B8' }
+                                                            ].map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip />
+                                                        <Legend verticalAlign="bottom" height={36} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {[
+                                            { label: 'Avg Session', value: '4m 32s', icon: Clock, color: 'text-blue-500' },
+                                            { label: 'Bounce Rate', value: '24.8%', icon: Activity, color: 'text-rose-500' },
+                                            { label: 'New Users', value: '1,284', icon: Users, color: 'text-emerald-500' }
+                                        ].map((item, i) => (
+                                            <div key={i} className="glass-card p-6 rounded-2xl flex items-center gap-4">
+                                                <div className={`p-3 rounded-xl bg-gray-50 ${item.color}`}>
+                                                    <item.icon size={24} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{item.label}</p>
+                                                    <p className="text-xl font-black text-[#2D1B4E]">{item.value}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : view === 'videos' ? (
+                        <div className="space-y-8 max-w-5xl mx-auto">
+                            {/* Add Video Form */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-[#2D1B4E] mb-4">Add New Video</h3>
+                                <form onSubmit={handleAddVideo} className="flex flex-col md:flex-row gap-4 items-end">
+                                    <div className="flex-1 space-y-1 w-full">
+                                        <label className="text-sm font-bold text-gray-700">Video Title</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                            placeholder="e.g. Kottravai in Action"
+                                            value={newVideo.title}
+                                            onChange={e => setNewVideo({ ...newVideo, title: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="flex-1 space-y-1 w-full">
+                                        <label className="text-sm font-bold text-gray-700">YouTube URL</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                            placeholder="https://www.youtube.com/watch?v=..."
+                                            value={newVideo.url}
+                                            onChange={e => setNewVideo({ ...newVideo, url: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {editingVideoId && (
+                                            <button
+                                                type="button"
+                                                onClick={cancelVideoEdit}
+                                                className="bg-gray-500 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-gray-600 transition-colors flex-shrink-0"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                        <button
+                                            type="submit"
+                                            className="bg-[#2D1B4E] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#8E2A8B] transition-colors flex-shrink-0"
+                                        >
+                                            {editingVideoId ? 'Update Video' : 'Add Video'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* Video List */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-[#2D1B4E] mb-6">Current Videos</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {videos.map(video => (
+                                        <div key={video.id} className="border border-gray-200 rounded-lg overflow-hidden group relative">
+                                            <div className="aspect-video bg-gray-100 relative">
+                                                <iframe
+                                                    className="w-full h-full"
+                                                    src={video.url}
+                                                    title={video.title}
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                    loading="lazy"
+                                                ></iframe>
+                                            </div>
+                                            <div className="p-4">
+                                                <h4 className="font-bold text-gray-800 leading-tight mb-2 line-clamp-2">{video.title}</h4>
+                                                <div className="flex justify-between items-center mt-4">
+                                                    <span className="text-xs text-gray-400">ID: {video.id}</span>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleEditVideo(video)}
+                                                            className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-full transition-colors"
+                                                            title="Edit Video"
+                                                        >
+                                                            <Pencil size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteVideo(video.id)}
+                                                            className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors"
+                                                            title="Delete Video"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {videos.length === 0 && (
+                                        <div className="col-span-full text-center py-10 text-gray-400">
+                                            No videos added yet.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : view === 'news' ? (
+                        <div className="space-y-8 max-w-5xl mx-auto">
+                            {/* Add News Form */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-[#2D1B4E] mb-4">{editingNewsId ? 'Edit News' : 'Add New News'}</h3>
+                                <form onSubmit={handleAddNews} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-bold text-gray-700">Title</label>
+                                            <input
+                                                type="text"
+                                                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                                value={newsForm.title}
+                                                onChange={e => setNewsForm({ ...newsForm, title: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-bold text-gray-700">Category</label>
+                                            <input
+                                                type="text"
+                                                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                                placeholder="e.g. Innovation"
+                                                value={newsForm.category}
+                                                onChange={e => setNewsForm({ ...newsForm, category: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-bold text-gray-700">Date</label>
+                                            <input
+                                                type="text"
+                                                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                                placeholder="e.g. June 01, 2025"
+                                                value={newsForm.date}
+                                                onChange={e => setNewsForm({ ...newsForm, date: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-bold text-gray-700">Read More Link</label>
+                                            <input
+                                                type="text"
+                                                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                                value={newsForm.link}
+                                                onChange={e => setNewsForm({ ...newsForm, link: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Image Upload for News */}
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-bold text-gray-700">News Image</label>
+                                        <div className="flex items-center gap-4">
+                                            {newsForm.image && (
+                                                <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                                                    <img src={newsForm.image} alt="Preview" className="w-full h-full object-cover" />
+                                                </div>
+                                            )}
+                                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                                Upload Image
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleNewsImageUpload} />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2 pt-2">
+                                        {editingNewsId && (
+                                            <button
+                                                type="button"
+                                                onClick={cancelNewsEdit}
+                                                className="bg-gray-500 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-gray-600 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                        <button
+                                            type="submit"
+                                            className="bg-[#2D1B4E] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#8E2A8B] transition-colors"
+                                        >
+                                            {editingNewsId ? 'Update News' : 'Add News'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* News List */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-[#2D1B4E] mb-6">Current News Items</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {newsItems.map(item => (
+                                        <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden group">
+                                            <div className="h-48 bg-gray-100 relative">
+                                                <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="p-4">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className="text-xs font-bold text-[#8E2A8B] uppercase tracking-wider">{item.category}</span>
+                                                    <span className="text-xs text-gray-400">{item.date}</span>
+                                                </div>
+                                                <h4 className="font-bold text-gray-800 leading-tight mb-4 line-clamp-2">{item.title}</h4>
+                                                <div className="flex justify-end gap-2 mt-auto">
+                                                    <button
+                                                        onClick={() => handleEditNews(item)}
+                                                        className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-full transition-colors"
+                                                        title="Edit News"
+                                                    >
+                                                        <Pencil size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteNewsItem(item.id)}
+                                                        className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors"
+                                                        title="Delete News"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {newsItems.length === 0 && (
+                                        <div className="col-span-full text-center py-10 text-gray-400">
+                                            No news items added yet.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : view === 'reviews' ? (
+                        <div className="space-y-8 max-w-5xl mx-auto">
+                            {/* Review Page Selector */}
+                            <div className="flex gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                <button
+                                    onClick={() => { setReviewPage('home'); cancelReviewEdit(); }}
+                                    className={`px-6 py-2 rounded-lg font-bold transition-all ${reviewPage === 'home' ? 'bg-[#8E2A8B] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                >
+                                    Home Page Reviews
+                                </button>
+                                <button
+                                    onClick={() => { setReviewPage('b2b'); cancelReviewEdit(); }}
+                                    className={`px-6 py-2 rounded-lg font-bold transition-all ${reviewPage === 'b2b' ? 'bg-[#8E2A8B] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                >
+                                    B2B Page Reviews
+                                </button>
+                            </div>
+
+                            {/* Add/Edit Review Form */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-[#2D1B4E] mb-4">{editingReviewId ? 'Edit Review' : `Add New Review (${reviewPage === 'home' ? 'Home' : 'B2B'})`}</h3>
+                                <form onSubmit={handleAddReview} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-bold text-gray-700">Name</label>
+                                            <input
+                                                type="text"
+                                                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                                value={reviewForm.name}
+                                                onChange={e => setReviewForm({ ...reviewForm, name: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-bold text-gray-700">Role / Title</label>
+                                            <input
+                                                type="text"
+                                                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                                value={reviewForm.role}
+                                                onChange={e => setReviewForm({ ...reviewForm, role: e.target.value })}
+                                                placeholder={reviewPage === 'b2b' ? 'e.g. CEO, Company Name' : 'e.g. Customer - Location'}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-bold text-gray-700">Content</label>
+                                        <textarea
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B] h-32"
+                                            value={reviewForm.content}
+                                            onChange={e => setReviewForm({ ...reviewForm, content: e.target.value })}
+                                        ></textarea>
+                                    </div>
+
+                                    {/* Image Upload for Review */}
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-bold text-gray-700">Profile Image (Optional)</label>
+                                        <div className="flex items-center gap-4">
+                                            {reviewForm.image && (
+                                                <div className="w-16 h-16 rounded-full overflow-hidden border border-gray-200">
+                                                    <img src={reviewForm.image} alt="Preview" className="w-full h-full object-cover" />
+                                                </div>
+                                            )}
+                                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                                Upload Image
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleReviewImageUpload} />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2 pt-2">
+                                        {editingReviewId && (
+                                            <button
+                                                type="button"
+                                                onClick={cancelReviewEdit}
+                                                className="bg-gray-500 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-gray-600 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                        <button
+                                            type="submit"
+                                            className="bg-[#2D1B4E] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#8E2A8B] transition-colors"
+                                        >
+                                            {editingReviewId ? 'Update Review' : 'Add Review'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* Reviews List */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-[#2D1B4E] mb-6">Current Reviews</h3>
+                                <div className="grid grid-cols-1 gap-4">
+                                    {filteredReviews.map(review => (
+                                        <div key={review.id} className="border border-gray-200 rounded-lg p-4 flex gap-4 items-start">
+                                            <div className="w-12 h-12 rounded-full bg-gray-100 flex-shrink-0 overflow-hidden">
+                                                {review.image ? <img src={review.image} alt={review.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400">?</div>}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-900">{review.name}</h4>
+                                                        <p className="text-xs text-[#8E2A8B] font-bold uppercase tracking-wider">{review.role}</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => handleEditReview(review)} className="text-blue-500 hover:text-blue-700 p-1"><Pencil size={16} /></button>
+                                                        <button onClick={() => deleteReview(review.id)} className="text-red-500 hover:text-red-700 p-1"><Trash2 size={16} /></button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-gray-600 text-sm mt-2">{review.content}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {filteredReviews.length === 0 && (
+                                        <div className="text-center py-8 text-gray-400">No reviews found for this page.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : view === 'partners' ? (
+                        <div className="space-y-8 max-w-5xl mx-auto">
+                            {/* Add Partner Form */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-[#2D1B4E] mb-4">{editingPartnerId ? 'Edit Trusted Partner' : 'Add New Trusted Partner'}</h3>
+                                <form onSubmit={handleAddPartner} className="space-y-4">
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-bold text-gray-700">Partner Name</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#8E2A8B]/20 focus:border-[#8E2A8B]"
+                                            value={partnerForm.name}
+                                            onChange={e => setPartnerForm({ ...partnerForm, name: e.target.value })}
+                                            placeholder="e.g. Company Name"
+                                        />
+                                    </div>
+
+                                    {/* Logo Upload */}
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-bold text-gray-700">Logo</label>
+                                        <div className="flex items-center gap-4">
+                                            {partnerForm.logo ? (
+                                                <div className="w-32 h-16 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center p-2">
+                                                    <img src={partnerForm.logo} alt="Preview" className="max-w-full max-h-full object-contain" />
+                                                </div>
+                                            ) : (
+                                                <div className="w-32 h-16 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400 text-xs">
+                                                    No Logo
+                                                </div>
+                                            )}
+                                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                                Upload Logo
+                                                <input type="file" className="hidden" accept="image/*" onChange={handlePartnerLogoUpload} />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2 pt-2">
+                                        {editingPartnerId && (
+                                            <button
+                                                type="button"
+                                                onClick={cancelPartnerEdit}
+                                                className="bg-gray-500 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-gray-600 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                        <button
+                                            type="submit"
+                                            className="bg-[#2D1B4E] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#8E2A8B] transition-colors"
+                                        >
+                                            {editingPartnerId ? 'Update Partner' : 'Add Partner'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* Partners List */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-[#2D1B4E] mb-6">Current Trusted Partners</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                    {partners.map(partner => (
+                                        <div key={partner.id} className="border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-between h-40 bg-gray-50 group relative">
+                                            <div className="flex-1 flex items-center justify-center w-full p-2">
+                                                {partner.logo ? (
+                                                    <img src={partner.logo} alt={partner.name} className="max-w-full max-h-20 object-contain" />
+                                                ) : (
+                                                    <span className="text-gray-500 font-bold text-center">{partner.name}</span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 font-medium mt-2">{partner.name}</p>
+
+                                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleEditPartner(partner)} className="bg-white text-blue-500 p-1.5 rounded-full shadow-sm hover:text-blue-700"><Pencil size={14} /></button>
+                                                <button onClick={() => deletePartner(partner.id)} className="bg-white text-red-500 p-1.5 rounded-full shadow-sm hover:text-red-700"><Trash2 size={14} /></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {partners.length === 0 && (
+                                        <div className="col-span-full text-center py-10 text-gray-400">
+                                            No partners added yet.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : view === 'add' ? (
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-4xl mx-auto">
+                            <h3 className="text-lg font-bold text-[#2D1B4E] mb-6">{editingId ? 'Edit Product' : 'Add New Product'}</h3>
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-700">Product Name</label>
+                                        <input
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none transition-all"
+                                            placeholder="Product Name"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-sm font-bold text-gray-700">Price (₹)</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="isCustomRequest"
+                                                    checked={formData.isCustomRequest}
+                                                    onChange={e => setFormData({ ...formData, isCustomRequest: e.target.checked, price: e.target.checked ? '0' : formData.price })}
+                                                    className="w-4 h-4 rounded text-[#8E2A8B] focus:ring-[#8E2A8B] border-gray-300"
+                                                />
+                                                <label htmlFor="isCustomRequest" className="text-xs font-bold text-[#8E2A8B] cursor-pointer select-none">
+                                                    Use Customization Form
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="number"
+                                            value={formData.price}
+                                            onChange={e => setFormData({ ...formData, price: e.target.value })}
+                                            className={`w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none transition-all ${formData.isCustomRequest ? 'bg-gray-100 text-gray-400' : ''}`}
+                                            placeholder="0.00"
+                                            disabled={formData.isCustomRequest}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-700">Category</label>
+                                        <select
+                                            value={formData.category}
+                                            onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none transition-all bg-white"
+                                        >
+                                            <option value="" disabled>Select a category</option>
+                                            {categories.filter(c => !c.parent).map(parent => (
+                                                <optgroup key={parent.slug} label={parent.name}>
+                                                    <option value={parent.slug}>--- General {parent.name} ---</option>
+                                                    {categories.filter(c => c.parent === parent.slug).map(sub => (
+                                                        <option key={sub.slug} value={sub.slug}>{sub.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2 flex items-center gap-3 pt-2">
+                                        <input
+                                            type="checkbox"
+                                            id="isBestSeller"
+                                            checked={formData.isBestSeller}
+                                            onChange={e => setFormData({ ...formData, isBestSeller: e.target.checked })}
+                                            className="w-5 h-5 rounded text-[#8E2A8B] focus:ring-[#8E2A8B] border-gray-300"
+                                        />
+                                        <label htmlFor="isBestSeller" className="text-sm font-bold text-gray-700 select-none cursor-pointer">
+                                            Mark as Best Seller (Show on Home Page)
+                                        </label>
+                                    </div>
+
+                                    {/* Custom Form Builder - Table View */}
+                                    {formData.isCustomRequest && (
+                                        <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-lg border border-gray-200">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="font-bold text-[#2D1B4E] text-lg">Custom Form Fields</h4>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({
+                                                        ...prev,
+                                                        customFormConfig: [...prev.customFormConfig, { id: Date.now().toString(), label: '', type: 'text', placeholder: '', required: true }]
+                                                    }))}
+                                                    className="bg-[#2D1B4E] text-white px-4 py-2 rounded-lg hover:bg-[#8E2A8B] transition flex items-center gap-2"
+                                                >
+                                                    <Plus size={16} />
+                                                    Add Field
+                                                </button>
+                                            </div>
+
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-gray-50 border-b-2 border-gray-200">
+                                                            <th className="text-left px-4 py-3 font-bold text-sm text-gray-700">Field Label</th>
+                                                            <th className="text-left px-4 py-3 font-bold text-sm text-gray-700">Placeholder Text</th>
+                                                            <th className="text-left px-4 py-3 font-bold text-sm text-gray-700">Field Type</th>
+                                                            <th className="text-center px-4 py-3 font-bold text-sm text-gray-700">Required</th>
+                                                            <th className="text-center px-4 py-3 font-bold text-sm text-gray-700">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {/* Default Fields - Now Editable */}
+                                                        {formData.defaultFormFields.map((field, index) => (
+                                                            <tr key={field.id} className="border-b border-gray-100 bg-gray-50/50 hover:bg-gray-100/50 transition">
+                                                                <td className="px-4 py-3">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={field.label}
+                                                                        onChange={(e) => {
+                                                                            const newFields = [...formData.defaultFormFields];
+                                                                            newFields[index].label = e.target.value;
+                                                                            setFormData({ ...formData, defaultFormFields: newFields });
+                                                                        }}
+                                                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none bg-white"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={field.placeholder}
+                                                                        onChange={(e) => {
+                                                                            const newFields = [...formData.defaultFormFields];
+                                                                            newFields[index].placeholder = e.target.value;
+                                                                            setFormData({ ...formData, defaultFormFields: newFields });
+                                                                        }}
+                                                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none bg-white"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <select
+                                                                        value={field.type}
+                                                                        onChange={(e) => {
+                                                                            const newFields = [...formData.defaultFormFields];
+                                                                            newFields[index].type = e.target.value as any;
+                                                                            setFormData({ ...formData, defaultFormFields: newFields });
+                                                                        }}
+                                                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none bg-white"
+                                                                    >
+                                                                        <option value="text">Text</option>
+                                                                        <option value="email">Email</option>
+                                                                        <option value="tel">Phone</option>
+                                                                        <option value="file">File Upload</option>
+                                                                        <option value="textarea">Long Text</option>
+                                                                        <option value="number">Number</option>
+                                                                    </select>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={field.required}
+                                                                        onChange={(e) => {
+                                                                            const newFields = [...formData.defaultFormFields];
+                                                                            newFields[index].required = e.target.checked;
+                                                                            setFormData({ ...formData, defaultFormFields: newFields });
+                                                                        }}
+                                                                        className="w-4 h-4 rounded text-[#8E2A8B] focus:ring-[#8E2A8B] border-gray-300"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <span className="text-xs text-gray-400 bg-gray-200 px-2 py-1 rounded">Default</span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+
+                                                        {/* Custom Fields - Editable */}
+                                                        {formData.customFormConfig.map((field, index) => (
+                                                            <tr key={field.id} className="border-b border-gray-100 hover:bg-blue-50/30 transition">
+                                                                <td className="px-4 py-3">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={field.label}
+                                                                        onChange={(e) => {
+                                                                            const newConfig = [...formData.customFormConfig];
+                                                                            newConfig[index].label = e.target.value;
+                                                                            setFormData({ ...formData, customFormConfig: newConfig });
+                                                                        }}
+                                                                        placeholder="e.g., Size, Color"
+                                                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={field.placeholder || ''}
+                                                                        onChange={(e) => {
+                                                                            const newConfig = [...formData.customFormConfig];
+                                                                            newConfig[index].placeholder = e.target.value;
+                                                                            setFormData({ ...formData, customFormConfig: newConfig });
+                                                                        }}
+                                                                        placeholder="Enter placeholder text"
+                                                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <select
+                                                                        value={field.type}
+                                                                        onChange={(e) => {
+                                                                            const newConfig = [...formData.customFormConfig];
+                                                                            newConfig[index].type = e.target.value as any;
+                                                                            setFormData({ ...formData, customFormConfig: newConfig });
+                                                                        }}
+                                                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none bg-white"
+                                                                    >
+                                                                        <option value="text">Text</option>
+                                                                        <option value="textarea">Long Text</option>
+                                                                        <option value="number">Number</option>
+                                                                    </select>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={field.required !== false}
+                                                                        onChange={(e) => {
+                                                                            const newConfig = [...formData.customFormConfig];
+                                                                            newConfig[index].required = e.target.checked;
+                                                                            setFormData({ ...formData, customFormConfig: newConfig });
+                                                                        }}
+                                                                        className="w-4 h-4 rounded text-[#8E2A8B] focus:ring-[#8E2A8B] border-gray-300"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const newConfig = formData.customFormConfig.filter((_, i) => i !== index);
+                                                                            setFormData({ ...formData, customFormConfig: newConfig });
+                                                                        }}
+                                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition"
+                                                                        title="Delete field"
+                                                                    >
+                                                                        <Trash2 size={18} />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {formData.customFormConfig.length === 0 && (
+                                                <p className="text-sm text-gray-400 italic text-center py-4 bg-gray-50 rounded mt-4">
+                                                    No custom fields added. Default fields (Name, Email, Phone, Image) will be used.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Product Variants Section */}
+                                    <div className="space-y-4 pt-6 border-t border-gray-100">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h4 className="text-md font-bold text-[#2D1B4E]">Product Variants (Weight-based)</h4>
+                                                <p className="text-xs text-gray-500">Add different weights, prices, and images for this product.</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData(prev => ({
+                                                    ...prev,
+                                                    variants: [...prev.variants, { weight: '', price: 0, images: [] }]
+                                                }))}
+                                                className="bg-[#2D1B4E] text-white px-4 py-2 rounded-lg hover:bg-[#8E2A8B] transition flex items-center gap-2 text-sm font-bold"
+                                            >
+                                                <Plus size={16} />
+                                                Add Variant
+                                            </button>
+                                        </div>
+
+                                        {formData.variants.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {formData.variants.map((variant, index) => (
+                                                    <div key={index} className="bg-gray-50 p-4 rounded-xl border border-gray-200 relative group">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newVariants = formData.variants.filter((_, i) => i !== index);
+                                                                setFormData({ ...formData, variants: newVariants });
+                                                            }}
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-1">
+                                                                <label className="text-xs font-bold text-gray-700">Weight / Size</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={variant.weight}
+                                                                    onChange={(e) => {
+                                                                        const newVariants = [...formData.variants];
+                                                                        newVariants[index].weight = e.target.value;
+                                                                        setFormData({ ...formData, variants: newVariants });
+                                                                    }}
+                                                                    placeholder="e.g. 500g, 1kg"
+                                                                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-xs font-bold text-gray-700">Price (₹)</label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={variant.price || ''}
+                                                                    onChange={(e) => {
+                                                                        const newVariants = [...formData.variants];
+                                                                        newVariants[index].price = parseFloat(e.target.value);
+                                                                        setFormData({ ...formData, variants: newVariants });
+                                                                    }}
+                                                                    placeholder="Price"
+                                                                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="mt-3 space-y-1">
+                                                            <label className="text-xs font-bold text-gray-700">Variant Images</label>
+                                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                                {(variant.images || []).map((img, imgIdx) => (
+                                                                    <div key={imgIdx} className="relative w-10 h-10 rounded border border-gray-300 overflow-hidden group/img">
+                                                                        <img src={img} className="w-full h-full object-cover" />
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const newVariants = [...formData.variants];
+                                                                                newVariants[index].images = newVariants[index].images.filter((_, i) => i !== imgIdx);
+                                                                                setFormData({ ...formData, variants: newVariants });
+                                                                            }}
+                                                                            className="absolute top-0 right-0 bg-red-500 text-white p-0.5 opacity-0 group-hover/img:opacity-100"
+                                                                        >
+                                                                            <X size={8} />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-3 py-1 rounded text-[10px] font-bold hover:bg-gray-50 transition-colors inline-block uppercase tracking-wider">
+                                                                Upload Images
+                                                                <input
+                                                                    type="file"
+                                                                    multiple
+                                                                    className="hidden"
+                                                                    accept="image/*"
+                                                                    onChange={(e) => {
+                                                                        const files = e.target.files;
+                                                                        if (files) {
+                                                                            Array.from(files).forEach(file => {
+                                                                                const reader = new FileReader();
+                                                                                reader.onloadend = () => {
+                                                                                    const newVariants = [...formData.variants];
+                                                                                    newVariants[index].images = [...(newVariants[index].images || []), reader.result as string];
+                                                                                    setFormData({ ...formData, variants: newVariants });
+                                                                                };
+                                                                                reader.readAsDataURL(file);
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                                <p className="text-sm text-gray-500 italic">No weight variants added. Default price and images will be used.</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">Short Description</label>
+                                    <input
+                                        type="text"
+                                        value={formData.shortDescription}
+                                        onChange={e => setFormData({ ...formData, shortDescription: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none transition-all"
+                                        placeholder="Brief summary used in cards"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">Full Description</label>
+                                    <textarea
+                                        rows={4}
+                                        value={formData.description}
+                                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none transition-all"
+                                        placeholder="Detailed description..."
+                                    ></textarea>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-700">Key Features (One per line)</label>
+                                        <textarea
+                                            rows={4}
+                                            value={formData.keyFeatures}
+                                            onChange={e => setFormData({ ...formData, keyFeatures: e.target.value })}
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none transition-all"
+                                            placeholder="- Feature 1&#10;- Feature 2"
+                                        ></textarea>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-700">Specifications (One per line)</label>
+                                        <textarea
+                                            rows={4}
+                                            value={formData.specifications}
+                                            onChange={e => setFormData({ ...formData, specifications: e.target.value })}
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none transition-all"
+                                            placeholder="- Spec 1&#10;- Spec 2"
+                                        ></textarea>
+                                    </div>
+                                </div>
+
+                                {/* Image Uploads */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-700">Main Image</label>
+                                        <div className="flex items-center gap-4">
+                                            {mainImage && (
+                                                <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                                                    <img src={mainImage} alt="Main" className="w-full h-full object-cover" />
+                                                </div>
+                                            )}
+                                            <label className="cursor-pointer bg-purple-50 hover:bg-purple-100 text-[#8E2A8B] px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                                                <Upload size={16} />
+                                                Upload Cover
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleMainImageUpload} />
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-700">Gallery Images</label>
+                                        <div className="space-y-3">
+                                            <div className="flex flex-wrap gap-2">
+                                                {otherImages.map((img, idx) => (
+                                                    <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 group">
+                                                        <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeOtherImage(idx)}
+                                                            className="absolute top-0 right-0 bg-red-500 text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors inline-flex items-center gap-2">
+                                                <Upload size={16} />
+                                                Add Images
+                                                <input type="file" multiple className="hidden" accept="image/*" onChange={handleOtherImagesUpload} />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setView('list'); resetForm(); }}
+                                        className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-bold hover:bg-gray-50 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2.5 bg-[#2D1B4E] text-white rounded-lg font-bold hover:bg-[#8E2A8B] transition-colors shadow-lg"
+                                    >
+                                        {editingId ? 'Save Changes' : 'Create Product'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    ) : view === 'stocks' ? (
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-[#2D1B4E] text-white">
+                                        <tr>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Product</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Current Stock</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Update Stock</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {products.map(product => (
+                                            <tr key={product.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded bg-gray-100 overflow-hidden">
+                                                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                                                        </div>
+                                                        <span className="font-medium text-gray-900">{product.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${product.stock && product.stock > 10 ? 'bg-green-100 text-green-700' : product.stock && product.stock > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {product.stock || 0} units
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => updateStock(product.id, Math.max(0, (product.stock || 0) - 1))}
+                                                            className="p-1.5 rounded-lg bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 transition-colors"
+                                                        >
+                                                            <ChevronDown size={16} />
+                                                        </button>
+                                                        <span className="w-8 text-center font-bold">{product.stock || 0}</span>
+                                                        <button
+                                                            onClick={() => updateStock(product.id, (product.stock || 0) + 1)}
+                                                            className="p-1.5 rounded-lg bg-gray-100 hover:bg-green-100 text-gray-600 hover:text-green-600 transition-colors"
+                                                        >
+                                                            <ChevronUp size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : view === 'users' ? (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Customers</h4>
+                                    <p className="text-3xl font-bold text-[#2D1B4E]">{customers.length}</p>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Average LTV</h4>
+                                    <p className="text-3xl font-bold text-blue-600">
+                                        ₹{customers.length > 0 ? (customers.reduce((acc, c) => acc + c.totalSpent, 0) / customers.length).toFixed(2) : 0}
+                                    </p>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Repeat Customers</h4>
+                                    <p className="text-3xl font-bold text-purple-600">{customers.filter(c => c.orderCount > 1).length}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-[#2D1B4E] text-white">
+                                        <tr>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Customer Name</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Email/Phone</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Orders</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Total Spent</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Last Order</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {customers.sort((a, b) => b.totalSpent - a.totalSpent).map((customer, idx) => (
+                                            <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <span className="font-bold text-gray-800">{customer.name}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm text-gray-600">{customer.email}</span>
+                                                        <span className="text-xs text-gray-400">{customer.phone}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="bg-purple-50 text-[#8E2A8B] px-3 py-1 rounded-full text-xs font-bold">
+                                                        {customer.orderCount} Orders
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 font-bold text-gray-900">₹{customer.totalSpent.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-500">
+                                                    {new Date(customer.lastOrder).toLocaleDateString()}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {customers.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-10 text-center text-gray-400 italic">No customer data available yet.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : view === 'orders' ? (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Orders</h4>
+                                    <p className="text-3xl font-bold text-[#2D1B4E]">{orders.length}</p>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Pending Processing</h4>
+                                    <p className="text-3xl font-bold text-orange-500">{orders.filter(o => o.status === 'Pending').length}</p>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Revenue</h4>
+                                    <p className="text-3xl font-bold text-green-600">₹{orders.reduce((acc, curr) => acc + curr.total, 0).toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-[#2D1B4E] text-white">
+                                        <tr>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Order ID</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Customer</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Items</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Date</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Total</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {orders.map(order => (
+                                            <tr key={order.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 font-medium text-gray-900">
+                                                    <div className="flex flex-col">
+                                                        <span>#{order.id.slice(0, 8)}...</span>
+                                                        {order.orderId && <span className="text-[10px] text-gray-400">{order.orderId}</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-gray-900">{order.customerName}</span>
+                                                        <span className="text-xs text-gray-500">{order.customerEmail}</span>
+                                                        <div className="flex flex-col mt-1 space-y-0.5">
+                                                            {order.customerPhone && <span className="text-[10px] text-gray-400">📞 {order.customerPhone}</span>}
+                                                            {order.address && <span className="text-[10px] text-gray-400 truncate max-w-[200px]" title={order.address}>🏠 {order.address}</span>}
+                                                            {order.city && <span className="text-[10px] text-gray-400">📍 {order.city}, {order.pincode}</span>}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1">
+                                                        {Array.isArray(order.items) ? order.items.map((item: any, idx: number) => (
+                                                            <div key={idx} className="flex items-center gap-2 text-xs">
+                                                                <span className="font-bold text-gray-800">{item.quantity}x</span>
+                                                                <span className="text-gray-600 truncate max-w-[150px]" title={item.name}>{item.name}</span>
+                                                            </div>
+                                                        )) : <span className="text-gray-400 italic text-xs">No items</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-600">{new Date(order.date).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4 font-bold text-[#8E2A8B]">₹{order.total}</td>
+                                                <td className="px-6 py-4">
+                                                    <select
+                                                        value={order.status}
+                                                        onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
+                                                        className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border-0 cursor-pointer focus:ring-2 focus:ring-offset-1 focus:ring-[#8E2A8B] ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                                            order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                                                                order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-gray-100 text-gray-700'
+                                                            }`}
+                                                    >
+                                                        <option value="Pending">Pending</option>
+                                                        <option value="Processing">Processing</option>
+                                                        <option value="Shipped">Shipped</option>
+                                                        <option value="Delivered">Delivered</option>
+                                                        <option value="Cancelled">Cancelled</option>
+                                                    </select>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={() => deleteOrder(order.id)}
+                                                        className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors"
+                                                        title="Delete Order"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {orders.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-10 text-center text-gray-400">No orders found.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
+                                <h3 className="text-lg font-bold text-[#2D1B4E]">All Products</h3>
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-[#8E2A8B] focus:border-[#8E2A8B] outline-none"
+                                >
+                                    <option value="all">All Categories</option>
+                                    {categories.filter(c => !c.parent).map(parent => (
+                                        <optgroup key={parent.slug} label={parent.name}>
+                                            <option value={parent.slug}>--- General {parent.name} ---</option>
+                                            {categories.filter(c => c.parent === parent.slug).map(sub => (
+                                                <option key={sub.slug} value={sub.slug}>{sub.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                            </div>
+                            <table className="w-full text-left">
+                                <thead className="bg-[#2D1B4E] text-white">
+                                    <tr>
+                                        <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Product</th>
+                                        <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Category</th>
+                                        <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider">Price</th>
+                                        <th className="px-6 py-4 font-bold text-sm uppercase tracking-wider text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredProducts.map(product => (
+                                        <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
+                                                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                                                    </div>
+                                                    <span className="font-bold text-gray-800">{product.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-600">
+                                                <span className="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-600 uppercase tracking-wide">
+                                                    {product.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 font-bold text-[#8E2A8B]">₹{product.price}</td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button onClick={() => handleEdit(product)} className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-full transition-colors" title="Edit">
+                                                        <Pencil size={18} />
+                                                    </button>
+                                                    <button onClick={() => deleteProduct(product.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors" title="Delete">
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredProducts.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
+                                                No products found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )
+                    }
+                </div >
+            </main >
+        </div >
+    );
+};
+
+export default AdminDashboard;
