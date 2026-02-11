@@ -90,10 +90,6 @@ const Cart = () => {
                                         <span>Subtotal</span>
                                         <span>₹{cartTotal}</span>
                                     </div>
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>Shipping</span>
-                                        <span className="text-green-600 font-medium">Free</span>
-                                    </div>
                                     <div className="pt-3 border-t border-gray-200 flex justify-between font-bold text-lg text-[#1A1A1A]">
                                         <span>Total</span>
                                         <span>₹{cartTotal}</span>
