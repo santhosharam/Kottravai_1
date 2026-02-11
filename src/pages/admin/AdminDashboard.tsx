@@ -6,7 +6,7 @@ import { useReviews } from '@/context/ReviewContext';
 import { useOrders } from '../../context/OrderContext';
 import { usePartners } from '@/context/PartnerContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Image as ImageIcon, Trash2, X, Upload, Pencil, MessageSquareQuote, Package, ShoppingBag, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, DollarSign, Handshake, Video, Newspaper, Users, LogOut, Search, Bell, Activity, ArrowUpRight, ArrowDownRight, MoreVertical, Calendar, Clock } from 'lucide-react';
+import { Plus, Image as ImageIcon, Trash2, X, Upload, Pencil, MessageSquareQuote, Package, ShoppingBag, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, DollarSign, Handshake, Video, Newspaper, Users, LogOut, Search, Bell, Activity, ArrowUpRight, ArrowDownRight, MoreVertical, Calendar, Clock, MessageCircle } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 import { categories } from '@/data/products';
 import toast from 'react-hot-toast';
@@ -22,7 +22,7 @@ const AdminDashboard = () => {
     const { partners, addPartner, updatePartner, deletePartner } = usePartners();
 
     const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean | null>(null);
-    const [view, setView] = useState<'dashboard' | 'list' | 'add' | 'videos' | 'news' | 'reviews' | 'stocks' | 'orders' | 'partners' | 'users'>('dashboard');
+    const [view, setView] = useState<'dashboard' | 'list' | 'add' | 'videos' | 'news' | 'reviews' | 'stocks' | 'orders' | 'partners' | 'users' | 'whatsapp-helper'>('dashboard');
 
     // Admin Session Guard
     useEffect(() => {
@@ -545,6 +545,25 @@ const AdminDashboard = () => {
                         </div>
                     </div>
 
+                    {/* WhatsApp Tools */}
+                    <div className="space-y-4">
+                        <p className="px-4 text-[10px] font-black text-[#25D366] uppercase tracking-[0.2em]">WhatsApp Tools</p>
+                        <div className="space-y-2">
+                            <button
+                                onClick={() => { setView('whatsapp-helper'); resetForm(); }}
+                                className={`w-full text-left px-5 py-3 rounded-2xl transition-all duration-300 font-bold flex items-center justify-between group ${view === 'whatsapp-helper' ? 'sidebar-item-active' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-2 rounded-xl transition-colors ${view === 'whatsapp-helper' ? 'bg-[#25D366]/20' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
+                                        <MessageCircle size={18} color="#25D366" />
+                                    </div>
+                                    <span className="text-sm">Catalog Assistant</span>
+                                </div>
+                                {view === 'whatsapp-helper' && <div className="h-1.5 w-1.5 rounded-full bg-[#25D366] shadow-[0_0_8px_#25D366]"></div>}
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Content Section */}
                     <div className="space-y-4">
                         <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Brand Experience</p>
@@ -744,7 +763,7 @@ const AdminDashboard = () => {
                                                 </select>
                                             </div>
                                             <div className="h-[350px] w-full">
-                                                <ResponsiveContainer width="100%" height="100%">
+                                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                                     <AreaChart
                                                         data={[
                                                             { name: 'Jan', sales: 4000, orders: 120 },
@@ -870,7 +889,7 @@ const AdminDashboard = () => {
                                         <div className="lg:col-span-2 glass-card p-8 rounded-3xl">
                                             <h3 className="text-xl font-black text-[#2D1B4E] mb-6">Regional Sales Trends</h3>
                                             <div className="h-[300px]">
-                                                <ResponsiveContainer width="100%" height="100%">
+                                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                                     <BarChart data={[
                                                         { name: 'North', sales: 4000 },
                                                         { name: 'South', sales: 7000 },
@@ -890,7 +909,7 @@ const AdminDashboard = () => {
                                         <div className="glass-card p-8 rounded-3xl flex flex-col items-center">
                                             <h3 className="text-xl font-black text-[#2D1B4E] mb-6 self-start">Category Share</h3>
                                             <div className="h-[300px] w-full">
-                                                <ResponsiveContainer width="100%" height="100%">
+                                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                                     <PieChart>
                                                         <Pie
                                                             data={[
@@ -2045,6 +2064,84 @@ const AdminDashboard = () => {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    ) : view === 'whatsapp-helper' ? (
+                        <div className="space-y-6 animate-in fade-in duration-500">
+                            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                                <h3 className="text-xl font-bold text-[#2D1B4E] mb-2 flex items-center gap-2">
+                                    <MessageCircle className="text-[#25D366]" size={24} />
+                                    WhatsApp Catalog Assistant
+                                </h3>
+                                <p className="text-gray-500 text-sm mb-6">
+                                    Use this tool to quickly sync your website products with your <b>WhatsApp Business App</b>.
+                                    Copy the description and link below, then paste them into your WhatsApp catalog.
+                                </p>
+
+                                {Object.entries(products.reduce((acc: any, product) => {
+                                    const category = product.category || 'Uncategorized';
+                                    if (!acc[category]) acc[category] = [];
+                                    acc[category].push(product);
+                                    return acc;
+                                }, {})).map(([category, items]: [string, any[]]) => (
+                                    <div key={category} className="mb-10 animate-in fade-in duration-700">
+                                        <div className="flex items-center gap-3 mb-4 pl-1">
+                                            <div className="h-6 w-1 bg-[#25D366] rounded-full"></div>
+                                            <h4 className="text-lg font-black text-gray-700 uppercase tracking-widest">{category}</h4>
+                                            <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-md">{items.length} Items</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {items.map(product => (
+                                                <div key={product.id} className="bg-gray-50 rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-all group">
+                                                    <div className="flex gap-4 mb-4">
+                                                        <div className="relative">
+                                                            <img src={product.image} className="w-16 h-16 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform" alt="" />
+                                                            <div className="absolute -top-2 -left-2 bg-white rounded-full p-1 shadow-sm border border-gray-100">
+                                                                <MessageCircle size={12} className="text-[#25D366]" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="font-bold text-[#2D1B4E] truncate text-sm">{product.name}</h4>
+                                                            <p className="text-sm font-black text-[#8E2A8B] mt-0.5">₹{product.price}</p>
+                                                            <p className="text-[10px] text-gray-400 mt-1 truncate">ID: {product.id.slice(0, 6)}...</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                const desc = `✨ *${product.name}*\n\n` +
+                                                                    `📦 *Category:* ${product.category}\n` +
+                                                                    `💰 *Price:* ₹${product.price}\n\n` +
+                                                                    `📝 *Details:* \n${(product.shortDescription || product.description || '').slice(0, 150)}...\n\n` +
+                                                                    `✅ Authentic Handcrafted Quality\n` +
+                                                                    `✅ Sustainable & Eco-friendly\n\n` +
+                                                                    `🛍️ Order Now via the link below!`;
+                                                                navigator.clipboard.writeText(desc);
+                                                                toast.success('Description Copied!');
+                                                            }}
+                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-[#25D366] hover:text-white hover:border-[#25D366] transition-all"
+                                                        >
+                                                            Copy Description
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => {
+                                                                const url = `${window.location.origin}/product/${product.slug}`;
+                                                                navigator.clipboard.writeText(url);
+                                                                toast.success('Product Link Copied!');
+                                                            }}
+                                                            className="w-full flex items-center justify-center gap-2 py-2 bg-[#2D1B4E] text-white rounded-lg text-xs font-bold hover:bg-black transition-colors"
+                                                        >
+                                                            <ArrowUpRight size={14} />
+                                                            Copy Site Link
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     ) : (

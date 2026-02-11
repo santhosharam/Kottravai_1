@@ -91,7 +91,9 @@ app.use(cors({
         'X-RTB-Fingerprint-Id',
         'razorpay_payment_id',
         'razorpay_order_id',
-        'razorpay_signature'
+        'razorpay_signature',
+        'x-admin-secret',
+        'X-Admin-Secret'
     ],
     exposedHeaders: [
         'x-rtb-fingerprint-id',
@@ -265,12 +267,17 @@ app.get('/api/products', async (req, res) => {
         console.timeEnd('DB_FETCH_PRODUCTS');
 
         // Update Cache
-        productCache.set("all_products", result.rows);
+        try {
+            productCache.set("all_products", result.rows);
+        } catch (cacheErr) {
+            console.warn('⚠️ Cache Write Error:', cacheErr);
+        }
 
         res.json(result.rows);
     } catch (err) {
-        console.error('❌ Products Fetch Error:', err);
-        res.status(500).json({ error: err.message });
+        console.error('❌ Products Fetch Error - Stack:', err.stack);
+        console.error('❌ Products Fetch Error - Msg:', err.message);
+        res.status(500).json({ error: 'Failed to fetch products', details: err.message });
     }
 });
 
@@ -278,6 +285,42 @@ app.get('/api/products', async (req, res) => {
 app.get('/api/cache-reset', (req, res) => {
     clearProductCache();
     res.json({ message: 'Performance cache has been reset' });
+});
+
+// Meta (Facebook/WhatsApp) Catalog Feed Automation
+app.get('/api/catalog-feed', async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM products ORDER BY created_at DESC');
+        const products = result.rows;
+
+        // CSV Header - Added product_type for auto-categorization
+        let csv = 'id,title,description,availability,condition,price,link,image_link,brand,product_type\n';
+
+        const domain = process.env.VITE_API_URL ? process.env.VITE_API_URL.replace('/api', '') : 'https://kottravai.in';
+
+        products.forEach(p => {
+            // Cleanup data for CSV
+            const id = p.id;
+            const title = `"${p.name.replace(/"/g, '""')}"`;
+            const description = `"${(p.short_description || p.description || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+            const availability = 'in stock';
+            const condition = 'new';
+            const price = `${p.price} INR`;
+            const link = `${domain}/product/${p.slug}`;
+            const image_link = p.image;
+            const brand = 'Kottravai';
+            const category = `"${(p.category || 'Uncategorized').replace(/"/g, '""')}"`;
+
+            csv += `${id},${title},${description},${availability},${condition},${price},${link},${image_link},${brand},${category}\n`;
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=catalog.csv');
+        res.status(200).send(csv);
+    } catch (err) {
+        console.error('Feed Error:', err);
+        res.status(500).send('Error generating feed');
+    }
 });
 
 app.get('/api/products/:slug', async (req, res) => {
