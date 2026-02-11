@@ -16,5 +16,41 @@
         "featured_image": "",
         "meta_title": "About Us - Kottravai",
         "meta_description": "Learn more about our mission and vision."
+    },
+    {
+        "id": 3,
+        "slug": "shipping-policy",
+        "title": "Shipping Policy",
+        "content": "<div class='max-w-4xl mx-auto py-12 space-y-8'><h1 class='text-4xl font-bold mb-8 text-center'>🚚 Shipping Policy – Kottravai</h1><p class='text-lg text-gray-700 leading-relaxed'>At Kottravai, every product is handcrafted with care by rural women artisans. We ensure safe and timely delivery while respecting the handmade nature of our products.</p><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Shipping Locations</h2><p class='text-gray-700'>We currently ship across India.</p></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Processing Time</h2><p class='text-gray-700'>All orders are processed within <strong>3–7 business days</strong>. Since our products are handcrafted, certain items may require additional preparation time. Any delays will be communicated via email or WhatsApp.</p></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Delivery Time</h2><ul class='list-disc list-inside text-gray-700 space-y-2'><li><strong>Standard Delivery:</strong> 5–10 business days after dispatch</li><li>Remote locations may take slightly longer</li></ul></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Shipping Charges</h2><ul class='list-disc list-inside text-gray-700 space-y-2'><li>Shipping charges, if applicable, will be calculated and displayed at checkout.</li><li>Free shipping may be offered during promotional periods.</li></ul></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Order Tracking</h2><p class='text-gray-700'>Once your order is shipped, tracking details will be shared via email or WhatsApp.</p></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Damaged or Lost Shipments</h2><p class='text-gray-700'>If your order arrives damaged or is lost in transit, please contact us within <strong>48 hours of delivery</strong> with supporting images.</p><p class='text-gray-700'>📩 Contact: <a href='mailto:support@kottravai.in' class='text-blue-600 hover:underline'>support@kottravai.in</a></p></section></div>",
+        "featured_image": "",
+        "meta_title": "Shipping Policy - Kottravai",
+        "meta_description": "Learn about our shipping locations, processing time, delivery time, and shipping charges for handcrafted products."
+    },
+    {
+        "id": 4,
+        "slug": "refund-policy",
+        "title": "Refund Policy",
+        "content": "<div class='max-w-4xl mx-auto py-12 space-y-8'><h1 class='text-4xl font-bold mb-8 text-center'>🔁 Refund Policy – Kottravai</h1><p class='text-lg text-gray-700 leading-relaxed'>We value trust and transparency while supporting artisan livelihoods.</p><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Returns & Refunds</h2><ul class='list-disc list-inside text-gray-700 space-y-2'><li>Due to the handmade and perishable nature of certain products, returns are accepted only for <strong>damaged, defective, or incorrect items</strong>.</li><li>Requests must be raised within <strong>48 hours of delivery</strong>.</li></ul></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Non-Returnable Items</h2><ul class='list-disc list-inside text-gray-700 space-y-2'><li>Food products & consumables</li><li>Customized or made-to-order items</li><li>Used or altered products</li></ul></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Refund Process</h2><ul class='list-disc list-inside text-gray-700 space-y-2'><li>Once approved, refunds will be processed within <strong>7–10 business days</strong>.</li><li>Refunds will be credited to the original payment method.</li></ul></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Replacement</h2><p class='text-gray-700'>Where possible, we may offer a replacement instead of a refund.</p></section><section class='space-y-4'><p class='text-gray-700'>📩 Email refund requests to: <a href='mailto:support@kottravai.in' class='text-blue-600 hover:underline'>support@kottravai.in</a></p></section></div>",
+        "featured_image": "",
+        "meta_title": "Refund Policy - Kottravai",
+        "meta_description": "Understand our refund and return policy for handcrafted products, including non-returnable items and refund process."
+    },
+    {
+        "id": 5,
+        "slug": "terms-of-service",
+        "title": "Terms of Service",
+        "content": "<div class='max-w-4xl mx-auto py-12 space-y-8'><h1 class='text-4xl font-bold mb-8 text-center'>📜 Terms of Service – Kottravai</h1><p class='text-lg text-gray-700 leading-relaxed'>By accessing or purchasing from Kottravai, you agree to the following terms:</p><section class='space-y-4'><ul class='list-disc list-inside text-gray-700 space-y-3'><li>All products are handcrafted; minor variations in color, texture, or finish are natural and not defects.</li><li>Prices and product availability are subject to change without notice.</li><li>Kottravai reserves the right to cancel orders due to stock issues, pricing errors, or unforeseen circumstances.</li><li>You agree not to misuse, reproduce, or exploit any content or products without written permission.</li><li>Kottravai shall not be liable for indirect or incidental damages arising from product usage.</li><li>These terms are governed by the laws of India.</li></ul></section></div>",
+        "featured_image": "",
+        "meta_title": "Terms of Service - Kottravai",
+        "meta_description": "Read our terms of service for purchasing handcrafted products from Kottravai."
+    },
+    {
+        "id": 6,
+        "slug": "privacy-policy",
+        "title": "Privacy Policy",
+        "content": "<div class='max-w-4xl mx-auto py-12 space-y-8'><h1 class='text-4xl font-bold mb-8 text-center'>🔐 Privacy Policy – Kottravai</h1><p class='text-lg text-gray-700 leading-relaxed'>Your privacy matters to us.</p><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Information We Collect</h2><ul class='list-disc list-inside text-gray-700 space-y-2'><li>Name, contact details, shipping address</li><li>Payment and transaction details</li><li>Website usage data (cookies & analytics)</li></ul></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>How We Use Your Information</h2><ul class='list-disc list-inside text-gray-700 space-y-2'><li>To process and deliver orders</li><li>To communicate order updates</li><li>To improve our services and user experience</li></ul></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Data Protection</h2><ul class='list-disc list-inside text-gray-700 space-y-2'><li>We do not sell or share your personal information with third parties except for delivery and payment processing.</li><li>Secure payment gateways are used for all transactions.</li></ul></section><section class='space-y-4'><h2 class='text-2xl font-bold text-gray-900'>Cookies</h2><p class='text-gray-700'>We use cookies to enhance website functionality and performance.</p><p class='text-gray-700'>By using our website, you consent to our privacy practices.</p></section><section class='space-y-4'><p class='text-gray-700'>📩 For privacy concerns: <a href='mailto:support@kottravai.in' class='text-blue-600 hover:underline'>support@kottravai.in</a></p></section></div>",
+        "featured_image": "",
+        "meta_title": "Privacy Policy - Kottravai",
+        "meta_description": "Learn how we collect, use, and protect your personal information at Kottravai."
     }
 ]
