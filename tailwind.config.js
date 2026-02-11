@@ -11,7 +11,7 @@ module.exports = {
                 dark: '#000000', // Pure Black
             },
             fontFamily: {
-                sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                sans: ['Nunito', 'sans-serif'],
             },
             container: {
                 center: true,

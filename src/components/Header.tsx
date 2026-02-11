@@ -63,39 +63,16 @@ const Header = () => {
             ]
         },
         {
-            label: "Instant Nourish", path: "/category/instant-nourish",
-            sub: [
-                { label: "Shakthimaan", path: "/category/shakthimaan" },
-                { label: "Crawl Booster", path: "/category/crawl-booster" },
-                { label: "Choco Blast", path: "/category/choco-blast" }
-            ]
+            label: "Instant Nourish", path: "/category/instant-nourish"
         },
         {
-            label: "Essential Care", path: "/category/essential-care",
-            sub: [
-                { label: "Heal Soap", path: "/category/heal-soap" },
-                { label: "Charcoal Soap", path: "/category/charcoal-soap" },
-                { label: "Skin Glow Soap", path: "/category/skin-glow-soap" }
-            ]
+            label: "Essential Care", path: "/category/essential-care"
         },
         {
-            label: "Gift Hampers", path: "/category/gift-hampers",
-            sub: [
-                { label: "Executive Desk Gifts Set", path: "/category/executive-desk-gifts-set" },
-                { label: "Wellness & Living Set", path: "/category/wellness-living-set" },
-                { label: "Heritage & Culture Gift Set", path: "/category/heritage-culture-gift-set" },
-                { label: "Festival & Celebration Gift Set", path: "/category/festival-celebration-gift-set" },
-                { label: "Hamper of Love", path: "/category/hamper-of-love" },
-                { label: "Anniversary Hamper", path: "/category/anniversary-hamper" }
-            ]
+            label: "Gift Hampers", path: "/category/gift-hampers"
         },
         {
-            label: "Signature Kits", path: "/category/signature-kits",
-            sub: [
-                { label: "Happy Journey Kit", path: "/category/happy-journey-kit" },
-                { label: "Bachelor Kit", path: "/category/bachelor-kit" },
-                { label: "Working Women Kit", path: "/category/working-women-kit" }
-            ]
+            label: "Signature Kits", path: "/category/signature-kits"
         }
     ];
 

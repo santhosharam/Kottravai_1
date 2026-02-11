@@ -20,7 +20,7 @@ const Shop = () => {
     const ITEMS_PER_PAGE = 12;
 
     // Default price range 50 - 1000
-    const [priceRange, setPriceRange] = useState<[number, number]>([50, 1000]);
+    const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
     const [sortBy, setSortBy] = useState('default');
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
@@ -153,12 +153,12 @@ const Shop = () => {
                                     <div className="w-1.5 h-6 bg-[#b5128f] rounded-full"></div>
                                     <h3 className="font-bold text-xl text-[#2D1B4E] tracking-tight">Categories</h3>
                                 </div>
-                                {(slug || priceRange[0] !== 50 || priceRange[1] !== 1000 || searchQuery) && (
+                                {(slug || priceRange[0] !== 0 || priceRange[1] !== 5000 || searchQuery) && (
                                     <Link
                                         to="/shop"
                                         className="text-[10px] font-black uppercase tracking-widest text-[#b5128f] hover:underline"
                                         onClick={() => {
-                                            setPriceRange([50, 1000]);
+                                            setPriceRange([0, 5000]);
                                             setExpandedCategory(null);
                                         }}
                                     >
@@ -265,7 +265,7 @@ const Shop = () => {
                                     <div className="relative pt-6 pb-2">
                                         <input
                                             type="range"
-                                            min="50" max="1000"
+                                            min="0" max="5000"
                                             step="100"
                                             value={priceRange[1]}
                                             onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
@@ -301,7 +301,7 @@ const Shop = () => {
 
 
                                     <button
-                                        onClick={() => setPriceRange([50, 1000])}
+                                        onClick={() => setPriceRange([0, 5000])}
                                         className="w-full py-2.5 rounded-xl text-xs font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
                                     >
                                         Reset Filter
@@ -336,7 +336,7 @@ const Shop = () => {
                     {isMobileFiltersOpen && (
                         <div className="lg:hidden fixed inset-0 z-[200] bg-white overflow-y-auto p-6 animate-in slide-in-from-bottom duration-500">
                             <div className="flex justify-between items-center mb-8">
-                                <h3 className="font-serif text-2xl font-bold text-[#2D1B4E]">Filters</h3>
+                                <h3 className="text-2xl font-bold text-[#2D1B4E]">Filters</h3>
                                 <button
                                     onClick={() => setIsMobileFiltersOpen(false)}
                                     className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500"
@@ -427,7 +427,7 @@ const Shop = () => {
                                 <div className="bg-white p-6 rounded-full mb-6 relative shadow-sm">
                                     <ShoppingBag size={48} className="text-[#b5128f] opacity-80" />
                                 </div>
-                                <h2 className="text-3xl font-serif font-bold text-[#2D1B4E] mb-4">Store Launching Soon</h2>
+                                <h2 className="text-3xl font-bold text-[#2D1B4E] mb-4">Store Launching Soon</h2>
                                 <p className="text-gray-600 mb-8 max-w-md">
                                     We are adding products to our inventory. Please check back shortly.
                                 </p>
@@ -448,7 +448,7 @@ const Shop = () => {
                                         )}
                                     </div>
                                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-3 md:p-4 rounded-2xl border border-gray-100 shadow-sm sticky top-0 md:relative z-40">
-                                        <h1 className="text-lg md:text-xl font-serif font-black text-[#2D1B4E] px-2">{pageTitle}</h1>
+                                        <h1 className="text-lg md:text-xl font-black text-[#2D1B4E] px-2">{pageTitle}</h1>
 
                                         <div className="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
                                             {/* Mobile Filter Toggle Button */}
@@ -567,7 +567,7 @@ const Shop = () => {
                                                             {product.category}
                                                         </span>
                                                     </div>
-                                                    <h3 className="text-center font-serif text-base font-bold text-[#2D1B4E] mb-2 leading-tight hover:text-[#b5128f] transition-colors line-clamp-2 min-h-[2.5rem]">
+                                                    <h3 className="text-center text-base font-bold text-[#2D1B4E] mb-2 leading-tight hover:text-[#b5128f] transition-colors line-clamp-2 min-h-[2.5rem]">
                                                         <Link to={`/product/${product.slug}`}>{product.name}</Link>
                                                     </h3>
 

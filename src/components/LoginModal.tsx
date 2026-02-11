@@ -108,7 +108,7 @@ const LoginModal: React.FC = () => {
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8">
-                        <h2 className="text-3xl font-serif font-bold text-white uppercase tracking-wider">
+                        <h2 className="text-3xl font-bold text-white uppercase tracking-wider">
                             {mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Sign Up' : 'Recovery'}
                         </h2>
                     </div>

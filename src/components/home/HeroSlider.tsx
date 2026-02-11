@@ -1,131 +1,110 @@
-import { useState, useEffect } from 'react';
-import { heroSlides } from '@/data/homeData';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 
 const HeroSlider = () => {
-    const [current, setCurrent] = useState(0);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    // Track previous index to determine slide direction logic if needed, 
+    // but effectively we just need to know which is active.
 
-    // Auto-scroll functionality
+    const slides = [
+        {
+            id: 1,
+            image: "https://kottravai.in/wp-content/uploads/2025/12/WhatsApp-Image-2025-12-30-at-4.20.58-PM-e1767163041511.jpeg",
+            link: "/shop"
+        },
+        {
+            id: 2,
+            image: "https://kottravai.in/wp-content/uploads/2025/12/WhatsApp-Image-2025-12-31-at-10.16.33-AM-e1767163411201.jpeg",
+            link: "/shop"
+        }
+    ];
+
+    const nextSlide = useCallback(() => {
+        setCurrentIndex((prev) => (prev + 1) % slides.length);
+    }, [slides.length]);
+
     useEffect(() => {
-        if (heroSlides.length <= 1) return; // Don't scroll if only 1 slide
-        const interval = setInterval(() => {
-            setCurrent(prev => (prev === heroSlides.length - 1 ? 0 : prev + 1));
-        }, 6000); // 6 seconds for better readability
+        const interval = setInterval(nextSlide, 4000);
         return () => clearInterval(interval);
-    }, []);
-
-    const nextSlide = () => {
-        if (heroSlides.length <= 1) return;
-        setCurrent(current === heroSlides.length - 1 ? 0 : current + 1);
-    };
-
-    const prevSlide = () => {
-        if (heroSlides.length <= 1) return;
-        setCurrent(current === 0 ? heroSlides.length - 1 : current - 1);
-    };
-
-    if (!heroSlides.length) return null;
+    }, [nextSlide]);
 
     return (
-        <section className="relative w-full overflow-hidden bg-[#faf7f2]">
-            {/* Reduced height as requested */}
-            <div className="relative w-full h-[50vh] md:h-[450px] lg:h-[550px]">
-                {heroSlides.map((slide, index) => {
-                    let positionClass = 'translate-x-full opacity-0 z-0'; // Default: Parked right
+        <section className="relative w-full bg-[#f5f5f5] overflow-hidden hero-banner-section">
+            <style>{`
+                /* Custom styles to match specific requirements */
+                .hero-banner-section {
+                    height: 600px;
+                }
+                @media (max-width: 768px) {
+                    .hero-banner-section {
+                        height: auto;
+                        aspect-ratio: 3/2;
+                        max-height: 500px;
+                    }
+                }
+                .banner-slide {
+                    transition: transform 0.8s ease-in-out;
+                }
+                @media (max-width: 768px) {
+                    .banner-slide img {
+                        object-fit: contain !important; /* Force contain on mobile as requested */
+                        background-color: #f9f9f9;
+                    }
+                }
+            `}</style>
 
-                    const isCurrent = index === current;
-                    const isPrev = index === (current === 0 ? heroSlides.length - 1 : current - 1);
-                    const isNext = index === (current === heroSlides.length - 1 ? 0 : current + 1);
+            <div className="relative w-full h-full">
+                {slides.map((slide, index) => {
+                    // Determine position based on current index
+                    let positionClass = 'translate-x-full z-10'; // Default right
 
-                    // If simple fade or 1 slide, force active
-                    if (heroSlides.length === 1) {
-                        positionClass = 'translate-x-0 opacity-100 z-20';
-                    } else {
-                        if (isCurrent) {
-                            positionClass = 'translate-x-0 opacity-100 z-20';
-                        } else if (isPrev) {
-                            positionClass = '-translate-x-full opacity-100 z-10';
-                        } else if (isNext) {
-                            positionClass = 'translate-x-full opacity-100 z-10';
-                        }
+                    if (index === currentIndex) {
+                        positionClass = 'translate-x-0 z-20'; // Active center
+                    } else if (
+                        index === (currentIndex - 1 + slides.length) % slides.length
+                    ) {
+                        // Previous slide goes to left
+                        positionClass = '-translate-x-full z-10';
                     }
 
                     return (
                         <div
                             key={slide.id}
-                            className={`absolute inset-0 w-full h-full transition-transform duration-700 ease-in-out ${positionClass}`}
+                            className={`absolute top-0 left-0 w-full h-full flex banner-slide bg-white ${positionClass}`}
                         >
-                            {/* Background Image - Anchored to TOP to show logo */}
-                            <div className={`absolute inset-0 w-full h-full transform transition-transform duration-[8000ms] ease-out ${isCurrent ? 'scale-105' : 'scale-100'}`}>
+                            <Link to={slide.link} className="block w-full h-full relative cursor-pointer">
                                 <img
                                     src={slide.image}
-                                    alt={slide.title}
-                                    className="w-full h-full object-cover object-top"
-                                    loading={index === 0 ? "eager" : "lazy"}
+                                    alt={`Banner ${slide.id}`}
+                                    className="absolute top-0 left-0 w-full h-full object-cover object-center md:object-cover sm:object-contain"
                                 />
-                            </div>
+                                {/* Mobile optimization: ensure image contains fully on small screens if needed, 
+                                    but user CSS said object-fit: contain for mobile. 
+                                    Let's apply that via inline styles or Tailwind classes based on media query equivalent means 
+                                    or just rely on the object-cover which usually looks good, 
+                                    but user specifically asked for 'object-fit: contain' on mobile.
+                                */}
 
-                            {/* Gradient Overlay - subtle for white bg */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/40"></div>
-
-                            {/* Content Container - Aligned Right with Top Padding/Margin to clear logo */}
-                            <div className="absolute inset-0 flex items-center md:items-start justify-center md:justify-end">
-                                <div className="container mx-auto px-6 md:px-12 flex justify-center md:justify-end">
-                                    <div className={`max-w-xl text-center md:text-right transform transition-all duration-700 delay-300 mt-16 sm:mt-24 md:mt-32 lg:mt-40 ${isCurrent ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-                                        <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-[#2D1B4E] mb-2 md:mb-4 leading-[1.2] md:leading-[1.1] tracking-tight drop-shadow-sm">
-                                            {slide.title}
-                                        </h1>
-                                        <p className="text-sm sm:text-base md:text-xl text-gray-700 mb-6 md:mb-8 font-medium leading-relaxed drop-shadow-sm max-w-sm mx-auto md:max-w-none md:ml-auto">
-                                            {slide.subtitle}
-                                        </p>
-
-                                        <div className="flex flex-wrap gap-4 justify-center md:justify-end">
-                                            <a
-                                                href={slide.link}
-                                                className="px-6 py-2.5 md:px-8 md:py-3 bg-[#b5128f] text-white font-bold rounded-full hover:bg-[#920e73] transition-all transform hover:-translate-y-1 hover:shadow-xl shadow-lg flex items-center justify-center min-w-[120px] md:min-w-[150px] text-sm md:text-base"
-                                            >
-                                                {slide.cta}
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            </Link>
                         </div>
                     );
                 })}
             </div>
 
-            {/* Navigation Dots - Hide if only 1 slide */}
-            {heroSlides.length > 1 && (
-                <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-30 flex space-x-3">
-                    {heroSlides.map((_, index) => (
-                        <button
-                            key={index}
-                            onClick={() => setCurrent(index)}
-                            className={`transition-all duration-300 rounded-full shadow-lg ${index === current ? 'bg-[#b5128f] w-10 h-3' : 'bg-white/50 w-3 h-3 hover:bg-white'
-                                }`}
-                            aria-label={`Go to slide ${index + 1}`}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {/* Navigation Arrows - Hide if only 1 slide */}
-            {heroSlides.length > 1 && (
-                <>
+            {/* Navigation Dots */}
+            <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2 z-30 flex gap-3">
+                {slides.map((_, index) => (
                     <button
-                        onClick={prevSlide}
-                        className="absolute top-1/2 left-4 md:left-8 z-30 transform -translate-y-1/2 p-3 rounded-full bg-black/20 hover:bg-[#b5128f] text-white backdrop-blur-sm border border-white/10 transition-all shadow-lg hover:shadow-[#b5128f]/50 group hidden md:block"
-                    >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                    </button>
-                    <button
-                        onClick={nextSlide}
-                        className="absolute top-1/2 right-4 md:right-8 z-30 transform -translate-y-1/2 p-3 rounded-full bg-black/20 hover:bg-[#b5128f] text-white backdrop-blur-sm border border-white/10 transition-all shadow-lg hover:shadow-[#b5128f]/50 group hidden md:block"
-                    >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                    </button>
-                </>
-            )}
+                        key={index}
+                        onClick={() => setCurrentIndex(index)}
+                        className={`w-3 h-3 rounded-full border border-white/10 transition-all duration-300 ${index === currentIndex
+                            ? 'bg-white scale-125'
+                            : 'bg-white/40 hover:bg-white/70'
+                            }`}
+                        aria-label={`Go to slide ${index + 1}`}
+                    />
+                ))}
+            </div>
         </section>
     );
 };

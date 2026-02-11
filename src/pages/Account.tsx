@@ -85,7 +85,7 @@ const Account = () => {
                         <div className="w-20 h-20 bg-[#b5128f]/10 rounded-full flex items-center justify-center mx-auto mb-6">
                             <User size={40} className="text-[#b5128f]" />
                         </div>
-                        <h1 className="text-3xl font-serif font-bold text-[#2D1B4E] mb-4">Your profile awaits</h1>
+                        <h1 className="text-3xl font-bold text-[#2D1B4E] mb-4">Your profile awaits</h1>
                         <p className="text-gray-500 mb-10 leading-relaxed">
                             Please sign in to view your orders, track your wishlist, and update your profile details.
                         </p>
@@ -109,7 +109,7 @@ const Account = () => {
                     <div className="space-y-8 animate-in fade-in duration-500">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                                <h2 className="text-3xl font-serif font-bold text-[#2D1B4E]">Welcome back, {user?.name}!</h2>
+                                <h2 className="text-3xl font-bold text-[#2D1B4E]">Welcome back, {user?.name}!</h2>
                                 <p className="text-gray-500 mt-1">Manage your account and view recent activity.</p>
                             </div>
                         </div>

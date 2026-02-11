@@ -86,6 +86,43 @@ export const products: Product[] = [
             'https://images.unsplash.com/photo-1614737662709-64eb772d1742?auto=format&fit=crop&q=80&w=800'
         ],
         reviews: []
+    },
+    {
+        id: '2',
+        name: 'Handcrafted Custom Coconut Shell Name Board',
+        price: 1250,
+        category: 'Coco Crafts',
+        categorySlug: 'coco-crafts',
+        image: 'https://images.unsplash.com/photo-1549887534-1541e9326642?auto=format&fit=crop&q=80&w=800',
+        slug: 'handcrafted-custom-coconut-shell-name-board',
+        shortDescription: 'A personalized masterpiece crafted from natural coconut shells, perfect for home entrances or office desks.',
+        description: 'Elevate your space with our Handcrafted Custom Coconut Shell Name Board. Each letter is intricately carved from premium coconut shells and mounted on a polished wooden base, creating a stunning 3D effect. Sustainable, unique, and purely handmade, this name board is a testament to the artistry of nature and human skill. Ideal for personal naming, house numbers, or corporate branding.',
+        keyFeatures: [
+            '100% Customisable Text & Design',
+            'Eco-friendly: Made from Natural Coconut Shells',
+            'Durable Wooden Base with High-Quality Finish',
+            'Unique 3D Textured Lettering',
+            'Weather-resistant coating for longevity',
+            'Perfect for Home Entrances, Desks, or Gifting',
+            'Handmarked by traditional artisans of Tamil Nadu'
+        ],
+        features: [
+            'Material: Coconut Shell Letters on Teak/Engineered Wood Base',
+            'Dimensions: Customizable (Standard: 12" x 4")',
+            'Finish: Natural Gloss Varnish',
+            'Mounting: Wall Hooks or Desk Stand included',
+            'Weight: 400g - 800g (Depending on size)'
+        ],
+        isCustomRequest: true,
+        customFormConfig: [
+            { id: 'custom_text', label: 'Name/Text to Display', type: 'text', placeholder: 'Enter the name (e.g., KOTTRAVAI)', required: true },
+            { id: 'font_style', label: 'Preferred Style', type: 'text', placeholder: 'Modern, Rustic, Cursive', required: false }
+        ],
+        images: [
+            'https://images.unsplash.com/photo-1549887534-1541e9326642?auto=format&fit=crop&q=80&w=800',
+            'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&q=80&w=800'
+        ],
+        reviews: []
     }
 ];
 

@@ -43,10 +43,10 @@ const BestSellers = () => {
     };
 
     return (
-        <section className="py-20 bg-white">
+        <section className="py-10 bg-white">
             <div className="container px-4">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 font-serif">Best Sellers</h2>
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Best Sellers</h2>
                     <div className="w-24 h-1 bg-primary mx-auto"></div>
                 </div>
 

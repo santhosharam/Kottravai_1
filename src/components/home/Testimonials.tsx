@@ -6,10 +6,10 @@ const Testimonials = () => {
     const testimonials = getReviewsByPage('home');
 
     return (
-        <section className="py-20 bg-white">
+        <section className="pt-10 pb-10 bg-white">
             <div className="container px-4">
                 <div className="text-center max-w-2xl mx-auto mb-16">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 font-serif">
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                         Loved by Our Community
                     </h2>
                     <p className="text-gray-500">

@@ -699,7 +699,9 @@ const {
     getContactAdminTemplate,
     getContactUserTemplate,
     getOrderAdminTemplate,
-    getOrderUserTemplate
+    getOrderUserTemplate,
+    getCustomRequestAdminTemplate,
+    getCustomRequestUserTemplate
 } = require('./utils/emailTemplates');
 
 
@@ -735,54 +737,73 @@ app.post('/api/b2b-inquiry', async (req, res) => {
 });
 
 // Custom Request Inquiry Email
+// Custom Request Inquiry Email
 app.post('/api/custom-request', async (req, res) => {
     try {
-        const { name, email, phone, requestedText, referenceImage, customFields, productName, allFields } = req.body;
+        const { name, email, phone, customFields, productName, items } = req.body;
+
+        // Normalize customFields to array for template
+        let processedFields = [];
+        if (Array.isArray(customFields)) {
+            processedFields = customFields;
+        } else if (typeof customFields === 'object') {
+            processedFields = Object.entries(customFields).map(([key, value]) => ({ label: key, value }));
+        }
+
+        const attachments = [];
+
+        // Helper to detect and process base64 images from frontend
+        const finalProcessedFields = processedFields.map(field => {
+            if (typeof field.value === 'string' && field.value.startsWith('data:image/')) {
+                try {
+                    // Simple regex to split header and data
+                    const matches = field.value.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
+                    if (matches && matches.length === 3) {
+                        const extension = matches[1].replace('jpeg', 'jpg'); // normalize jpeg
+                        const base64Data = matches[2];
+                        const filename = `${field.label.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${extension}`;
+
+                        attachments.push({
+                            filename: filename,
+                            content: Buffer.from(base64Data, 'base64')
+                        });
+
+                        return { ...field, value: `[Attached: ${filename}]` };
+                    }
+                } catch (e) {
+                    console.error('Error processing image attachment:', e);
+                }
+            }
+            return field;
+        });
+
+        const emailData = {
+            customerName: name,
+            email,
+            phone,
+            productName,
+            customFields: finalProcessedFields
+        };
 
         const adminEmail = 'admin@kottravai.in';
 
-
-        // Construct dynamic fields HTML
-        let fieldsHtml = '';
-        if (allFields && Array.isArray(allFields)) {
-            fieldsHtml = allFields.map(f => `
-                <div style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
-                    <strong style="color: #2D1B4E;">${f.label}:</strong>
-                    <div style="margin-top: 5px; color: #555;">${f.value || 'N/A'}</div>
-                </div>
-            `).join('');
-        }
-
-        const htmlContent = `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
-                <h2 style="color: #2D1B4E; border-bottom: 2px solid #8E2A8B; padding-bottom: 10px;">Customization Inquiry</h2>
-                <p>You received a new customization request for <strong>${productName}</strong>.</p>
-                
-                <div style="margin-top: 20px;">
-                    ${fieldsHtml}
-                </div>
-
-                ${referenceImage ? `
-                <div style="margin-top: 20px;">
-                    <strong style="color: #2D1B4E;">Reference Image:</strong>
-                    <div style="margin-top: 10px;">
-                        <img src="${referenceImage}" alt="Reference" style="max-width: 100%; border-radius: 8px; border: 1px solid #eee;" />
-                    </div>
-                </div>
-                ` : ''}
-
-                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #888;">
-                    This inquiry was sent from the Kottravai Product Details page.
-                </div>
-            </div>
-        `;
-
-        await sendEmail({
-            to: adminEmail,
-            subject: `New Customization Request: ${productName}`,
-            html: htmlContent,
-            type: 'custom'
-        });
+        // Send emails
+        await Promise.all([
+            sendEmail({
+                to: adminEmail,
+                subject: `New Customization Request: ${productName}`,
+                html: getCustomRequestAdminTemplate(emailData),
+                type: 'custom',
+                attachments
+            }),
+            sendEmail({
+                to: email,
+                subject: `We Received Your Custom Request - Kottravai`,
+                html: getCustomRequestUserTemplate(emailData),
+                type: 'custom',
+                attachments // Also send attachments back to user for confirmation
+            })
+        ]);
 
         res.json({ status: 'success', message: 'Custom request sent successfully' });
 

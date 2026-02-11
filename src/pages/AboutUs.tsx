@@ -56,7 +56,7 @@ const TeamSlider = () => {
                                 />
                             </div>
                             <div className="px-1">
-                                <h4 className="font-bold text-[#2D1B4E] text-base sm:text-lg font-serif mb-1 sm:mb-2">{member.name}</h4>
+                                <h4 className="font-bold text-[#2D1B4E] text-base sm:text-lg mb-1 sm:mb-2">{member.name}</h4>
                                 <p className="text-gray-500 text-xs sm:text-sm font-medium tracking-wide">{member.role}</p>
                             </div>
                         </div>
@@ -161,7 +161,7 @@ const AboutUs = () => {
                 {/* Our Impact Section - New Design */}
                 <section className="py-10 bg-white">
                     <div className="container mx-auto px-4 max-w-7xl">
-                        <h2 className="text-center text-3xl md:text-5xl font-bold text-[#2D1B4E] mb-8 font-serif leading-tight">
+                        <h2 className="text-center text-3xl md:text-5xl font-bold text-[#2D1B4E] mb-8 leading-tight">
                             Our Impact
                         </h2>
 
@@ -241,7 +241,7 @@ const AboutUs = () => {
                 <section className="py-16 bg-gray-50">
                     <div className="container mx-auto px-4">
                         <div className="text-center mb-16">
-                            <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] font-serif mb-4">
+                            <h2 className="text-3xl md:text-4xl font-bold text-[#2D1B4E] mb-4">
                                 Heart & Horizon
                             </h2>
                             <p className="max-w-2xl mx-auto text-gray-600">
@@ -279,7 +279,7 @@ const AboutUs = () => {
                 <section className="py-24 bg-white overflow-hidden">
                     <div className="container mx-auto px-4 mb-20">
                         <div className="text-center max-w-3xl mx-auto mb-16">
-                            <h2 className="text-3xl md:text-5xl font-bold text-[#2D1B4E] font-serif mb-6">
+                            <h2 className="text-3xl md:text-5xl font-bold text-[#2D1B4E] mb-6">
                                 Our Team
                             </h2>
                             <p className="text-lg text-gray-600">
@@ -357,7 +357,7 @@ const AboutUs = () => {
                             <span className="text-[13px] tracking-[.18em] uppercase text-[#8E2A8B] font-bold block">
                                 OUR DIFFERENCE
                             </span>
-                            <h2 className="text-[28px] md:text-[38px] font-extrabold text-[#2D1B4E] my-3.5 font-serif">
+                            <h2 className="text-[28px] md:text-[38px] font-extrabold text-[#2D1B4E] my-3.5">
                                 What Makes Kottravai Different
                             </h2>
                             <p className="text-[#555] text-lg leading-[1.7]">
@@ -462,7 +462,7 @@ const AboutUs = () => {
                                 OUR COMMITMENT
                             </span>
 
-                            <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-6 text-[#2D1B4E] font-serif">
+                            <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-6 text-[#2D1B4E]">
                                 Join the Kottravai Movement
                             </h2>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Lock, Truck, Store, ChevronDown } from 'lucide-react';
+import { CheckCircle, Lock, ChevronDown } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { useCart } from '@/context/CartContext';
 import { useOrders } from '@/context/OrderContext';
@@ -38,16 +38,15 @@ const Checkout = () => {
         }
     }, [user]);
 
-    const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
     const [discountCode, setDiscountCode] = useState('');
 
     // Calculations
-    const shippingCost = 50; // Example fixed shipping
+    // Removed shippingCost since it is always 0
     const discountAmount = 0; // Example placeholder
-    const totalAmount = cartTotal + (deliveryMethod === 'delivery' ? shippingCost : 0) - discountAmount;
+    const totalAmount = cartTotal - discountAmount;
 
     // Help fix Mixed Content errors by ensuring local URLs are treated as relative paths
     const sanitizeUrl = (url: string) => {
@@ -237,7 +236,7 @@ const Checkout = () => {
                             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 mx-auto mb-6 animate-bounce">
                                 <CheckCircle size={40} />
                             </div>
-                            <h1 className="text-3xl font-serif font-bold text-[#2D1B4E] mb-4">Payment Successful!</h1>
+                            <h1 className="text-3xl font-bold text-[#2D1B4E] mb-4">Payment Successful!</h1>
                             <p className="text-gray-600 mb-8">
                                 Thank you for your purchase. Your order has been placed successfully and is being processed.
                             </p>
@@ -317,30 +316,7 @@ const Checkout = () => {
                             <h2 className="text-xl font-bold text-[#1A1A1A] mb-6">Shipping Information</h2>
 
                             {/* Delivery/Pickup Toggle */}
-                            <div className="flex gap-4 mb-8">
-                                <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${deliveryMethod === 'delivery' ? 'border-[#8E2A8B] bg-purple-50 text-[#8E2A8B]' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'}`}>
-                                    <input
-                                        type="radio"
-                                        name="deliveryMethod"
-                                        className="hidden"
-                                        checked={deliveryMethod === 'delivery'}
-                                        onChange={() => setDeliveryMethod('delivery')}
-                                    />
-                                    <Truck size={20} />
-                                    <span className="font-medium">Delivery</span>
-                                </label>
-                                <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${deliveryMethod === 'pickup' ? 'border-[#8E2A8B] bg-purple-50 text-[#8E2A8B]' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'}`}>
-                                    <input
-                                        type="radio"
-                                        name="deliveryMethod"
-                                        className="hidden"
-                                        checked={deliveryMethod === 'pickup'}
-                                        onChange={() => setDeliveryMethod('pickup')}
-                                    />
-                                    <Store size={20} />
-                                    <span className="font-medium">Pick up</span>
-                                </label>
-                            </div>
+
 
                             {/* Form Fields */}
                             <div className="space-y-6">
@@ -519,10 +495,7 @@ const Checkout = () => {
                                         <span>Subtotal</span>
                                         <span className="font-medium">₹{cartTotal}</span>
                                     </div>
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>Shipping</span>
-                                        <span className="font-medium">{deliveryMethod === 'delivery' ? `₹${shippingCost}` : 'Free'}</span>
-                                    </div>
+
                                     <div className="flex justify-between text-gray-600">
                                         <span>Discount</span>
                                         <span className="font-medium text-green-600">-₹{discountAmount}</span>

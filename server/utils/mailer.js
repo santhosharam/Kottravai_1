@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const path = require('path');
 require('dotenv').config();
 
 // Zoho SMTP Configuration
@@ -32,7 +33,7 @@ const EMAIL_ALIASES = {
  * @param {string} options.type - Email type (order, b2b, contact, subscribe, custom)
  * @returns {Promise<Object>} - Send result
  */
-const sendEmail = async ({ to, subject, html, type = 'contact' }) => {
+const sendEmail = async ({ to, subject, html, type = 'contact', attachments = [] }) => {
     const replyTo = EMAIL_ALIASES[type] || EMAIL_ALIASES.contact;
 
     console.log('📧 Sending email via Zoho SMTP...');
@@ -41,6 +42,18 @@ const sendEmail = async ({ to, subject, html, type = 'contact' }) => {
     console.log('To:', to);
     console.log('Subject:', subject);
     console.log('Type:', type);
+    const finalAttachments = [
+        ...attachments,
+        {
+            filename: 'kottravai-logo.png',
+            path: path.join(__dirname, '../../public/uploads/2026/01/kottravai-logo-final.png'),
+            cid: 'kottravai-logo'
+        }
+    ];
+
+    if (finalAttachments.length > 0) {
+        console.log(`📎 With ${finalAttachments.length} attachment(s) (including logo)`);
+    }
 
     try {
         const info = await transporter.sendMail({
@@ -49,6 +62,7 @@ const sendEmail = async ({ to, subject, html, type = 'contact' }) => {
             replyTo: replyTo,
             subject: subject,
             html: html,
+            attachments: finalAttachments
         });
 
         console.log('✅ Email sent successfully:', info.messageId);

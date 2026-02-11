@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
-import { Product, categories } from '@/data/products';
+import { Product, categories, products as staticProducts } from '@/data/products';
 import { safeSetItem, safeGetItem } from '@/utils/storage';
 
 const API_URL = `${import.meta.env.VITE_API_URL || '/api'}/products`;
@@ -47,15 +47,21 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         reviews: p.reviews || [],
         isBestSeller: p.is_best_seller || p.isBestSeller || false,
         isCustomRequest: p.is_custom_request || p.isCustomRequest || false,
-        custom_form_config: p.custom_form_config || p.customFormConfig || [],
-        default_form_fields: p.default_form_fields || p.defaultFormFields || [],
+        customFormConfig: p.custom_form_config || p.customFormConfig || [],
+        defaultFormFields: p.default_form_fields || p.defaultFormFields || [],
         variants: p.variants || []
     });
 
     const fetchProducts = async () => {
         try {
             const response = await axios.get(API_URL);
-            const mappedProducts = response.data.map(mapProductFromDB);
+            let mappedProducts = response.data.map(mapProductFromDB);
+
+            // Fallback to static data if API returns empty
+            if (mappedProducts.length === 0) {
+                console.log('API returned empty, using static fallback data');
+                mappedProducts = staticProducts;
+            }
 
             // Only update state if data has actually changed to avoid unnecessary re-renders
             // A simple length check or deep compare could go here, but let's always sync to be safe
@@ -65,7 +71,8 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
             safeSetItem('kottravai_cache_products', JSON.stringify(mappedProducts));
             safeSetItem('kottravai_cache_time', Date.now().toString());
         } catch (error) {
-            console.error("Failed to fetch products from API", error);
+            console.error("Failed to fetch products from API, using static fallback", error);
+            setProducts(staticProducts);
         } finally {
             setLoading(false);
         }

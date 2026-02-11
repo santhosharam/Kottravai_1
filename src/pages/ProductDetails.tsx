@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
@@ -24,6 +25,9 @@ const ProductDetails = () => {
     });
 
     const [selectedVariant, setSelectedVariant] = useState<any>(null);
+    const [customFormData, setCustomFormData] = useState<Record<string, string>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
 
     useEffect(() => {
@@ -126,11 +130,11 @@ const ProductDetails = () => {
                         <div className="mb-2">
                             <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-[#b5128f] opacity-60">{product.category}</span>
                         </div>
-                        <h1 className="text-3xl md:text-5xl font-serif font-black text-[#2D1B4E] mb-6 leading-[1.1]">{product.name}</h1>
+                        <h1 className="text-3xl md:text-5xl font-black text-[#2D1B4E] mb-6 leading-[1.1]">{product.name}</h1>
 
                         <div className="flex items-center gap-4 mb-8">
                             {product.isCustomRequest ? (
-                                <span className="text-2xl font-bold text-[#8E2A8B] bg-purple-50 px-5 py-3 rounded-2xl border border-purple-100 font-serif italic">Price on Request</span>
+                                <span className="text-2xl font-bold text-[#8E2A8B] bg-purple-50 px-5 py-3 rounded-2xl border border-purple-100 italic">Price on Request</span>
                             ) : (
                                 <span className="text-4xl font-black text-[#b5128f]">₹{Number(selectedVariant ? selectedVariant.price * quantity : product.price * quantity).toLocaleString('en-IN')}</span>
                             )}
@@ -197,8 +201,138 @@ const ProductDetails = () => {
                                 </button>
                             </div>
                         ) : (
-                            <div className="mb-12">
-                                <button onClick={() => navigate('/contact')} className="w-full h-16 bg-black text-white rounded-[1.25rem] font-black uppercase tracking-widest text-xs hover:bg-[#b5128f] transition-colors">Request Price List</button>
+                            <div className="mb-12 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-200 shadow-sm">
+                                <h3 className="text-xl font-black text-[#2D1B4E] mb-6 uppercase tracking-wide">Customize Your Order</h3>
+                                <form onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    setIsSubmitting(true);
+                                    setSubmitStatus('idle');
+                                    try {
+                                        const emailEntry = Object.entries(customFormData).find(([k]) => k.toLowerCase().includes('email'));
+                                        const nameEntry = Object.entries(customFormData).find(([k]) => k.toLowerCase().includes('name'));
+                                        const phoneEntry = Object.entries(customFormData).find(([k]) => k.toLowerCase().includes('phone') || k.toLowerCase().includes('mobile'));
+
+                                        await axios.post('/api/custom-request', {
+                                            productName: product.name,
+                                            customFields: customFormData,
+                                            email: emailEntry ? emailEntry[1] : '',
+                                            name: nameEntry ? nameEntry[1] : '',
+                                            phone: phoneEntry ? phoneEntry[1] : ''
+                                        });
+
+                                        setSubmitStatus('success');
+                                        setCustomFormData({});
+                                    } catch (err) {
+                                        console.error(err);
+                                        setSubmitStatus('error');
+                                    } finally {
+                                        setIsSubmitting(false);
+                                    }
+                                }} className="space-y-5">
+
+                                    {/* Default Fields */}
+                                    {product.defaultFormFields?.filter(f => f.isDefault).map(field => (
+                                        <div key={field.id} className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{field.label} {field.required && <span className="text-red-500">*</span>}</label>
+                                            {field.type === 'textarea' ? (
+                                                <textarea
+                                                    placeholder={field.placeholder}
+                                                    required={field.required}
+                                                    className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-[#8E2A8B]/20 outline-none transition-all"
+                                                    rows={3}
+                                                    value={customFormData[field.label] || ''}
+                                                    onChange={e => setCustomFormData(prev => ({ ...prev, [field.label]: e.target.value }))}
+                                                />
+                                            ) : (
+                                                <input
+                                                    type={field.type}
+                                                    placeholder={field.placeholder}
+                                                    required={field.required}
+                                                    className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-[#8E2A8B]/20 outline-none transition-all"
+                                                    {...(field.type !== 'file' ? { value: customFormData[field.label] || '' } : {})}
+                                                    onChange={e => {
+                                                        if (field.type === 'file') {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onloadend = () => {
+                                                                    setCustomFormData(prev => ({ ...prev, [field.label]: reader.result as string }));
+                                                                };
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        } else {
+                                                            setCustomFormData(prev => ({ ...prev, [field.label]: e.target.value }));
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* Custom Configured Fields */}
+                                    {product.customFormConfig?.map(field => (
+                                        <div key={field.id} className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{field.label} {field.required && <span className="text-red-500">*</span>}</label>
+                                            {field.type === 'textarea' ? (
+                                                <textarea
+                                                    placeholder={field.placeholder}
+                                                    required={field.required}
+                                                    className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-[#8E2A8B]/20 outline-none transition-all"
+                                                    rows={3}
+                                                    value={customFormData[field.label] || ''}
+                                                    onChange={e => setCustomFormData(prev => ({ ...prev, [field.label]: e.target.value }))}
+                                                />
+                                            ) : (
+                                                <input
+                                                    type={field.type}
+                                                    placeholder={field.placeholder}
+                                                    required={field.required}
+                                                    className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-[#8E2A8B]/20 outline-none transition-all"
+                                                    {...(field.type !== 'file' ? { value: customFormData[field.label] || '' } : {})}
+                                                    onChange={e => {
+                                                        if (field.type === 'file') {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onloadend = () => {
+                                                                    setCustomFormData(prev => ({ ...prev, [field.label]: reader.result as string }));
+                                                                };
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        } else {
+                                                            setCustomFormData(prev => ({ ...prev, [field.label]: e.target.value }));
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    <button type="submit" disabled={isSubmitting} className="w-full h-14 bg-[#2D1B4E] text-white rounded-[1.25rem] font-black uppercase tracking-widest text-xs hover:bg-[#b5128f] transition-all shadow-lg shadow-[#2D1B4E]/20 mt-4 disabled:opacity-70 disabled:cursor-not-allowed">
+                                        {isSubmitting ? 'Sending...' : 'Submit Custom Request'}
+                                    </button>
+
+                                    {submitStatus === 'success' && (
+                                        <div className="mt-4 p-4 bg-green-50 text-green-800 rounded-xl border border-green-100 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+                                            <div className="bg-green-100 p-2 rounded-full hidden md:block">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-green-600"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm">Request Sent Successfully!</p>
+                                                <p className="text-xs opacity-90">We will review your requirements and contact you shortly.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {submitStatus === 'error' && (
+                                        <div className="mt-4 p-4 bg-red-50 text-red-800 rounded-xl border border-red-100 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+                                            <div className="bg-red-100 p-2 rounded-full hidden md:block">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                            </div>
+                                            <p className="text-sm font-medium">Something went wrong. Please check your internet connection and try again.</p>
+                                        </div>
+                                    )}
+                                </form>
                             </div>
                         )}
 
@@ -296,7 +430,7 @@ const ProductDetails = () => {
                 {/* Related Products */}
                 {relatedProducts.length > 0 && (
                     <div className="mt-32 pt-20 border-t border-gray-100">
-                        <h3 className="text-4xl font-serif font-black text-[#2D1B4E] mb-12">Related <span className="text-[#b5128f]">Excellence</span></h3>
+                        <h3 className="text-4xl font-black text-[#2D1B4E] mb-12">Related <span className="text-[#b5128f]">Excellence</span></h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
                             {relatedProducts.map(rel => (
                                 <Link key={rel.id} to={`/product/${rel.slug}`} className="group">
@@ -337,7 +471,7 @@ const ProductDetails = () => {
                     <div className="absolute inset-0 bg-[#2D1B4E]/40 backdrop-blur-sm" onClick={() => setIsReviewPanelOpen(false)}></div>
                     <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in fade-in slide-in-from-bottom duration-500">
                         <button onClick={() => setIsReviewPanelOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-black transition-colors"><X size={24} /></button>
-                        <h3 className="text-3xl font-serif font-black text-[#2D1B4E] mb-2">Share Your Story</h3>
+                        <h3 className="text-3xl font-black text-[#2D1B4E] mb-2">Share Your Story</h3>
                         <p className="text-gray-400 text-sm mb-8 font-medium">Your feedback inspires our craftsmanship.</p>
 
                         <form onSubmit={handleSubmitReview} className="space-y-6">

@@ -119,7 +119,7 @@ const FAQ = () => {
                 {/* Hero Section - Minimal */}
                 <div className="pt-10 pb-12 px-4 text-center max-w-4xl mx-auto">
                     <span className="text-[#b5128f] text-xs font-bold tracking-[0.2em] uppercase mb-4 block">Help Center</span>
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-[#2D1B4E] mb-6 tracking-tight leading-tight font-serif">
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-[#2D1B4E] mb-6 tracking-tight leading-tight">
                         Frequently Asked Questions
                     </h1>
                     <p className="text-gray-500 text-lg font-light max-w-xl mx-auto">
@@ -133,7 +133,7 @@ const FAQ = () => {
                             <div key={catIdx} className="grid md:grid-cols-[1fr_2fr] gap-8 md:gap-16 border-t border-gray-100 pt-12 first:border-0 first:pt-0">
                                 {/* Category Title */}
                                 <div className="md:sticky md:top-24 h-fit">
-                                    <h2 className="text-2xl font-bold text-[#2D1B4E] font-serif mb-2">
+                                    <h2 className="text-2xl font-bold text-[#2D1B4E] mb-2">
                                         {section.category}
                                     </h2>
                                     <div className="h-1 w-12 bg-[#b5128f] rounded-full opacity-20"></div>
@@ -152,7 +152,7 @@ const FAQ = () => {
                     {/* Minimal CTA */}
                     <div className="mt-32 border border-[#f0f0f0] rounded-2xl p-10 md:p-14 text-center bg-[#fafafa]/50 relative overflow-hidden">
                         <div className="relative z-10">
-                            <h2 className="text-2xl md:text-3xl font-serif text-[#2D1B4E] mb-3">Still have questions?</h2>
+                            <h2 className="text-2xl md:text-3xl text-[#2D1B4E] mb-3">Still have questions?</h2>
                             <p className="text-gray-500 font-light mb-8">We're here to help you make the right choice.</p>
 
                             <div className="flex flex-col sm:flex-row gap-5 justify-center items-center">

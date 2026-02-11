@@ -25,7 +25,7 @@ const getBaseLayout = (content) => `
     <div style="background-color: #f6f6f6; padding: 20px 0;">
         <div class="container">
             <div class="header">
-                <img src="https://kottravai.in/wp-content/uploads/2024/05/kottravai-logo.png" alt="Kottravai Logo" class="logo" style="display:block; margin: 0 auto;">
+                <img src="cid:kottravai-logo" alt="Kottravai Logo" class="logo" style="display:block; margin: 0 auto;">
             </div>
             
             <div class="content">
@@ -267,5 +267,86 @@ module.exports = {
     getContactAdminTemplate,
     getContactUserTemplate,
     getOrderAdminTemplate,
-    getOrderUserTemplate
+};
+
+const getCustomRequestAdminTemplate = (data) => {
+    const fieldsHtml = data.customFields.map(field => `
+        <div class="info-row">
+            <span class="label">${field.label}:</span> <br>
+            <span class="value" style="white-space: pre-wrap;">${field.value || '-'}</span>
+        </div>
+    `).join('');
+
+    const content = `
+        <h2>New Custom Product Request</h2>
+        <p>You have received a new custom request for <strong>${data.productName}</strong>.</p>
+        
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 10px;">Customer Details</h3>
+            <div class="info-row">
+                <span class="label">Name:</span> <br>
+                <span class="value">${data.customerName}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Email:</span> <br>
+                <span class="value"><a href="mailto:${data.email}" style="color: #8E2A8B;">${data.email}</a></span>
+            </div>
+            <div class="info-row">
+                <span class="label">Phone:</span> <br>
+                <span class="value">${data.phone}</span>
+            </div>
+
+            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-top: 20px;">Request Details</h3>
+            <div class="info-row">
+                <span class="label">Product:</span> <br>
+                <span class="value"><strong>${data.productName}</strong></span>
+            </div>
+            ${fieldsHtml}
+        </div>
+        
+        <p style="text-align: center;">
+            <a href="mailto:${data.email}" class="btn">Reply to Request</a>
+        </p>
+    `;
+    return getBaseLayout(content);
+};
+
+const getCustomRequestUserTemplate = (data) => {
+    const content = `
+        <h2>We Received Your Custom Request</h2>
+        <p>Dear ${data.customerName},</p>
+        <p>Thank you for your interest in our <strong>${data.productName}</strong>. We have successfully received your customization request.</p>
+        
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 10px;">Your Request Details</h3>
+            <div class="info-row">
+                <span class="label">Product:</span> <br>
+                <span class="value">${data.productName}</span>
+            </div>
+            ${data.customFields.map(field => `
+                <div class="info-row">
+                    <span class="label">${field.label}:</span> <br>
+                    <span class="value">${field.value || '-'}</span>
+                </div>
+            `).join('')}
+        </div>
+
+        <p>Our artisans will review your requirements and we will contact you shortly with a quote and timeline.</p>
+        
+        <p>If you have any urgent changes, please reply to this email or call us at <strong style="color: #2D1B4E;">+91 97870 30811</strong>.</p>
+        
+        <p>Warm Regards,<br>Team Kottravai</p>
+    `;
+    return getBaseLayout(content);
+};
+
+module.exports = {
+    getB2BAdminTemplate,
+    getB2BUserTemplate,
+    getContactAdminTemplate,
+    getContactUserTemplate,
+    getOrderAdminTemplate,
+    getOrderUserTemplate,
+    getCustomRequestAdminTemplate,
+    getCustomRequestUserTemplate
 };
