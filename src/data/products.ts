@@ -44,7 +44,7 @@ export interface Product {
     customFormConfig?: Array<{
         id: string;
         label: string;
-        type: 'text' | 'textarea' | 'number';
+        type: 'text' | 'textarea' | 'number' | 'file';
         placeholder?: string;
         required?: boolean;
     }>;
